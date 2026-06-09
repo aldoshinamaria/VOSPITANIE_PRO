@@ -1,4 +1,5 @@
 import { mockAppState } from "@/data/mock-data";
+import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
 import { findModuleIdByTitle } from "@/lib/domain/modules";
 import type {
   AppState,
@@ -9,7 +10,8 @@ import type {
   KpvrItem,
   SchoolEvent,
   SchoolPassport,
-  SocialPartner
+  SocialPartner,
+  WorkProgram
 } from "@/types/domain";
 
 export interface AppRepository {
@@ -60,7 +62,7 @@ export function createAppRepository(): AppRepository {
 }
 
 function migrateState(state: Partial<AppState>): AppState {
-  return {
+  const migratedState = {
     ...mockAppState,
     ...state,
     schoolPassport: migrateSchoolPassport(state.schoolPassport),
@@ -70,8 +72,44 @@ function migrateState(state: Partial<AppState>): AppState {
     extraActivities: Array.isArray(state.extraActivities)
       ? state.extraActivities.map(migrateExtraActivity)
       : mockAppState.extraActivities,
+    educationalSystem: {
+      associations: Array.isArray(state.educationalSystem?.associations)
+        ? state.educationalSystem.associations
+        : mockAppState.educationalSystem.associations,
+      infrastructureObjects: Array.isArray(state.educationalSystem?.infrastructureObjects)
+        ? state.educationalSystem.infrastructureObjects
+        : mockAppState.educationalSystem.infrastructureObjects,
+      partners: Array.isArray(state.educationalSystem?.partners)
+        ? state.educationalSystem.partners
+        : mockAppState.educationalSystem.partners
+    },
+    importedDocuments: Array.isArray(state.importedDocuments) ? state.importedDocuments : mockAppState.importedDocuments,
+    extractedEvents: Array.isArray(state.extractedEvents) ? state.extractedEvents : mockAppState.extractedEvents,
+    normativeDocuments: Array.isArray(state.normativeDocuments) ? state.normativeDocuments : mockAppState.normativeDocuments,
+    processedDocuments: Array.isArray(state.processedDocuments) ? state.processedDocuments : mockAppState.processedDocuments,
+    documentProcessingLogs: Array.isArray(state.documentProcessingLogs)
+      ? state.documentProcessingLogs
+      : mockAppState.documentProcessingLogs,
+    workProgram: mockAppState.workProgram,
     exportDocuments: migrateExportDocuments(state.exportDocuments)
   };
+
+  return {
+    ...migratedState,
+    workProgram: isCurrentWorkProgram(state.workProgram)
+      ? state.workProgram
+      : createEmptyWorkProgram(migratedState as AppState)
+  };
+}
+
+function isCurrentWorkProgram(program?: Partial<WorkProgram>): program is WorkProgram {
+  return Boolean(
+    program?.schoolCulture &&
+      program.progress &&
+      Array.isArray(program.sections) &&
+      program.sections.every((section) => Array.isArray(section.subsections)) &&
+      program.sectionVersions
+  );
 }
 
 function migrateSchoolPassport(passport?: Partial<SchoolPassport>): SchoolPassport {
@@ -147,6 +185,9 @@ function migrateEvent(
     venue: event.venue ?? "",
     coExecutors: event.coExecutors ?? "",
     partner: event.partner ?? "",
+    associationId: event.associationId ?? "",
+    infrastructureObjectId: event.infrastructureObjectId ?? "",
+    systemPartnerId: event.systemPartnerId ?? "",
     status: normalizeEventStatus(event.status),
     participantsCount: event.participantsCount ?? parseParticipantsCount(event.participants),
     shortReport: event.shortReport ?? ""

@@ -25,6 +25,46 @@ export interface Database {
         Insert: EventInsert;
         Update: Partial<EventInsert>;
       };
+      educational_associations: {
+        Row: EducationalAssociationRow;
+        Insert: EducationalAssociationInsert;
+        Update: Partial<EducationalAssociationInsert>;
+      };
+      school_infrastructure_objects: {
+        Row: SchoolInfrastructureObjectRow;
+        Insert: SchoolInfrastructureObjectInsert;
+        Update: Partial<SchoolInfrastructureObjectInsert>;
+      };
+      educational_system_partners: {
+        Row: EducationalSystemPartnerRow;
+        Insert: EducationalSystemPartnerInsert;
+        Update: Partial<EducationalSystemPartnerInsert>;
+      };
+      imported_documents: {
+        Row: ImportedDocumentRow;
+        Insert: ImportedDocumentInsert;
+        Update: Partial<ImportedDocumentInsert>;
+      };
+      extracted_events: {
+        Row: ExtractedEventRow;
+        Insert: ExtractedEventInsert;
+        Update: Partial<ExtractedEventInsert>;
+      };
+      normative_documents: {
+        Row: NormativeDocumentRow;
+        Insert: NormativeDocumentInsert;
+        Update: Partial<NormativeDocumentInsert>;
+      };
+      document_processing_state: {
+        Row: DocumentProcessingStateRow;
+        Insert: DocumentProcessingStateInsert;
+        Update: Partial<DocumentProcessingStateInsert>;
+      };
+      work_programs: {
+        Row: WorkProgramRow;
+        Insert: WorkProgramInsert;
+        Update: Partial<WorkProgramInsert>;
+      };
       extracurricular_programs: {
         Row: ExtracurricularProgramRow;
         Insert: ExtracurricularProgramInsert;
@@ -100,6 +140,12 @@ export interface EventRow {
   responsible: string;
   co_executors: string;
   partner: string;
+  association_id: string;
+  infrastructure_object_id: string;
+  system_partner_id: string;
+  source_document_id: string;
+  source_document_title: string;
+  source_document_type: string;
   status: string;
   participants_count: number;
   short_report: string;
@@ -109,6 +155,123 @@ export interface EventRow {
 }
 
 export type EventInsert = Omit<EventRow, "created_at" | "updated_at">;
+
+export interface EducationalAssociationRow {
+  id: string;
+  school_id: string;
+  type: string;
+  title: string;
+  description: string;
+  leader: string;
+  participants_count: number;
+  classes: string;
+  photo_url: string;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type EducationalAssociationInsert = Omit<EducationalAssociationRow, "created_at" | "updated_at">;
+
+export interface SchoolInfrastructureObjectRow {
+  id: string;
+  school_id: string;
+  type: string;
+  title: string;
+  description: string;
+  responsible: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type SchoolInfrastructureObjectInsert = Omit<SchoolInfrastructureObjectRow, "created_at" | "updated_at">;
+
+export interface EducationalSystemPartnerRow {
+  id: string;
+  school_id: string;
+  title: string;
+  type: string;
+  cooperation_description: string;
+  contact_person: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type EducationalSystemPartnerInsert = Omit<EducationalSystemPartnerRow, "created_at" | "updated_at">;
+
+export interface ImportedDocumentRow {
+  id: string;
+  school_id: string;
+  title: string;
+  type: string;
+  uploaded_at: string;
+  size_bytes: number;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type ImportedDocumentInsert = Omit<ImportedDocumentRow, "created_at" | "updated_at">;
+
+export interface ExtractedEventRow {
+  id: string;
+  school_id: string;
+  title: string;
+  description: string;
+  date: string;
+  month: number;
+  education_level: string;
+  module: string;
+  responsible: string;
+  source_document_id: string;
+  source_type: string;
+  confidence: number;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type ExtractedEventInsert = Omit<ExtractedEventRow, "created_at" | "updated_at">;
+
+export interface NormativeDocumentRow {
+  id: string;
+  school_id: string;
+  title: string;
+  category: string;
+  level: string;
+  document_date: string;
+  version: string;
+  source: string;
+  actuality_status: string;
+  uploaded_at: string;
+  file_name: string;
+  file_type: string;
+  size_bytes: number;
+  requirements: unknown;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type NormativeDocumentInsert = Omit<NormativeDocumentRow, "created_at" | "updated_at">;
+
+export interface DocumentProcessingStateRow {
+  id: string;
+  school_id: string;
+  processed_documents: unknown;
+  logs: unknown;
+  updated_at?: string;
+}
+
+export type DocumentProcessingStateInsert = DocumentProcessingStateRow;
+
+export interface WorkProgramRow {
+  id: string;
+  school_id: string;
+  data: unknown;
+  updated_at?: string;
+}
+
+export type WorkProgramInsert = WorkProgramRow;
 
 export interface ExtracurricularProgramRow {
   id: string;

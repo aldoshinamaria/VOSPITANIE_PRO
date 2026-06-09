@@ -14,6 +14,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
+  findAssociationById,
+  findEducationalSystemPartnerById,
+  findInfrastructureObjectById
+} from "@/lib/domain/educational-system";
+import {
   educationLevelLabels,
   getEventPlanLabels,
   getKpvrPlanLabels,
@@ -36,6 +41,9 @@ interface EventForm {
   responsible: string;
   coExecutors: string;
   partner: string;
+  associationId: string;
+  infrastructureObjectId: string;
+  systemPartnerId: string;
   status: EventStatus;
   participantsCount: string;
   shortReport: string;
@@ -87,6 +95,9 @@ const emptyForm: EventForm = {
   responsible: "",
   coExecutors: "",
   partner: "",
+  associationId: "",
+  infrastructureObjectId: "",
+  systemPartnerId: "",
   status: "planned",
   participantsCount: "0",
   shortReport: "",
@@ -122,6 +133,7 @@ export default function EventsPage() {
   const [savedMessage, setSavedMessage] = React.useState<string | null>(null);
 
   const activeModules = state.educationModules.filter((educationModule) => educationModule.active);
+  const educationalSystem = state.educationalSystem;
   const derivedMonth = form.startDate ? getMonthFromDate(form.startDate) : null;
   const filteredEvents = state.events.filter((event) => {
     const matchesModule = moduleFilter === "all" || event.moduleId === moduleFilter;
@@ -182,6 +194,9 @@ export default function EventsPage() {
       responsible: form.responsible.trim(),
       coExecutors: form.coExecutors.trim(),
       partner: form.partner.trim(),
+      associationId: form.associationId,
+      infrastructureObjectId: form.infrastructureObjectId,
+      systemPartnerId: form.systemPartnerId,
       status: form.status,
       participantsCount: Number(form.participantsCount) || 0,
       shortReport: form.shortReport.trim(),
@@ -219,6 +234,9 @@ export default function EventsPage() {
       responsible: event.responsible,
       coExecutors: event.coExecutors,
       partner: event.partner,
+      associationId: event.associationId ?? "",
+      infrastructureObjectId: event.infrastructureObjectId ?? "",
+      systemPartnerId: event.systemPartnerId ?? "",
       status: event.status,
       participantsCount: String(event.participantsCount),
       shortReport: event.shortReport,
@@ -288,6 +306,9 @@ export default function EventsPage() {
       responsible: competitionForm.responsible.trim(),
       coExecutors: "",
       partner: competitionForm.organizer.trim(),
+      associationId: "",
+      infrastructureObjectId: "",
+      systemPartnerId: "",
       status: "planned",
       participantsCount: 0,
       shortReport: competitionForm.note.trim(),
@@ -587,7 +608,43 @@ export default function EventsPage() {
               onChange={(event) => setField("partner", event.target.value)}
             />
             <label className="grid gap-2 text-sm font-medium">
-              <FieldLabel label="Статус" />
+              <FieldLabel label="Связь с объединением" />
+              <Select value={form.associationId} onChange={(event) => setField("associationId", event.target.value)}>
+                <option value="">Не связано с объединением</option>
+                {educationalSystem.associations.map((association) => (
+                  <option key={association.id} value={association.id}>
+                    {association.title}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              <FieldLabel label="Связь с инфраструктурой" />
+              <Select
+                value={form.infrastructureObjectId}
+                onChange={(event) => setField("infrastructureObjectId", event.target.value)}
+              >
+                <option value="">Не связано с инфраструктурой</option>
+                {educationalSystem.infrastructureObjects.map((object) => (
+                  <option key={object.id} value={object.id}>
+                    {object.title}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              <FieldLabel label="Связь с партнером воспитательной системы" />
+              <Select value={form.systemPartnerId} onChange={(event) => setField("systemPartnerId", event.target.value)}>
+                <option value="">Не связано с партнером</option>
+                {educationalSystem.partners.map((partner) => (
+                  <option key={partner.id} value={partner.id}>
+                    {partner.title}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              <FieldLabel label="РЎС‚Р°С‚СѓСЃ" />
               <Select value={form.status} onChange={(event) => setField("status", event.target.value as EventStatus)}>
                 <option value="planned">Планируется</option>
                 <option value="completed">Проведено</option>
@@ -701,6 +758,15 @@ export default function EventsPage() {
                 <TableBody>
                   {filteredEvents.map((event) => {
                     const educationModule = findModuleById(state.educationModules, event.moduleId);
+                    const linkedAssociation = findAssociationById(educationalSystem.associations, event.associationId);
+                    const linkedInfrastructure = findInfrastructureObjectById(
+                      educationalSystem.infrastructureObjects,
+                      event.infrastructureObjectId
+                    );
+                    const linkedPartner = findEducationalSystemPartnerById(
+                      educationalSystem.partners,
+                      event.systemPartnerId
+                    );
 
                     return (
                       <TableRow key={event.id}>
@@ -720,6 +786,13 @@ export default function EventsPage() {
                         <TableCell className="min-w-56">
                           <div className="font-medium">{educationModule?.title ?? "Модуль не выбран"}</div>
                           <div className="text-xs text-muted-foreground">{event.direction}</div>
+                          {linkedAssociation || linkedInfrastructure || linkedPartner ? (
+                            <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                              {linkedAssociation ? <div>Объединение: {linkedAssociation.title}</div> : null}
+                              {linkedInfrastructure ? <div>Инфраструктура: {linkedInfrastructure.title}</div> : null}
+                              {linkedPartner ? <div>Партнер: {linkedPartner.title}</div> : null}
+                            </div>
+                          ) : null}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">

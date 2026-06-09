@@ -290,3 +290,313 @@
 - [ ] Выполнить `supabase/schema.sql`.
 - [ ] Создать `.env.local`.
 - [ ] Повторить end-to-end CRUD-проверку на реальной базе.
+## Educational System Section
+
+Текущий этап: добавлен раздел «Воспитательная система школы» как база для будущего ИИ-конструктора КПВР.
+
+Выполнено:
+
+- [x] Добавлены типы воспитательных объединений, инфраструктуры и партнеров.
+- [x] Добавлена страница `/educational-system`.
+- [x] Добавлен пункт меню «Воспитательная система».
+- [x] Мероприятия расширены связями с объединением, инфраструктурой и партнером.
+- [x] Добавлена аналитика объединений: количество мероприятий, участники, уровень активности.
+- [x] Supabase SQL-схема расширена таблицами `educational_associations`, `school_infrastructure_objects`, `educational_system_partners`.
+
+Архитектурные решения:
+
+- Новые данные хранятся в `AppState.educationalSystem`, чтобы UI и будущий ИИ-конструктор работали с единым доменным объектом.
+- Связи мероприятия хранятся в `SchoolEvent.associationId`, `SchoolEvent.infrastructureObjectId`, `SchoolEvent.systemPartnerId`.
+- При удалении ресурса связи в мероприятиях очищаются, чтобы не оставлять битые ссылки.
+## Import Documents Section
+
+Текущий этап: добавлен раздел «Импорт документов».
+
+Выполнено:
+
+- [x] Добавлен пункт меню «Импорт документов».
+- [x] Добавлена страница `/import-documents`.
+- [x] Пользователь может выбрать DOCX, PDF и XLSX.
+- [x] После выбора файл появляется в списке.
+- [x] Для файла отображаются название, тип, дата загрузки, размер и статус обработки.
+- [x] Содержимое документов пока не анализируется и не сохраняется; хранится только metadata.
+- [x] Supabase SQL-схема расширена таблицей `imported_documents`.
+
+Архитектурные решения:
+
+- Импортированные документы хранятся в `AppState.importedDocuments`.
+- Статус по умолчанию `uploaded`, чтобы позже добавить очередь обработки без изменения UI-контракта.
+- Таблица `imported_documents` хранит только метаданные; файловое хранилище Supabase Storage можно подключить отдельным этапом.
+
+## Document Event Extraction
+
+Текущий этап: добавлено mock-извлечение мероприятий из импортированных документов без OpenAI API.
+
+Выполнено:
+
+- [x] Добавлена сущность `ExtractedEvent`.
+- [x] Добавлен сервисный контракт `DocumentEventExtractor`.
+- [x] Добавлена mock-реализация `MockDocumentEventExtractor`.
+- [x] На странице импорта добавлена кнопка «Извлечь мероприятия».
+- [x] Добавлен экран «Найденные мероприятия».
+- [x] Добавлены фильтры по уровням НОО/ООО/СОО/Все уровни.
+- [x] Добавлен поиск по найденным мероприятиям.
+- [x] Добавлен множественный выбор найденных мероприятий.
+- [x] Импорт найденных мероприятий в основной реестр намеренно не реализован.
+- [x] Supabase SQL-схема расширена таблицей `extracted_events`.
+
+Архитектурные решения:
+
+- UI зависит от интерфейса `DocumentEventExtractor`, а не от конкретной mock-реализации.
+- На следующем этапе mock-анализатор можно заменить на OpenAI-реализацию с тем же методом `extract(document)`.
+- Найденные мероприятия хранятся отдельно в `AppState.extractedEvents`, чтобы не смешивать черновые результаты распознавания с утвержденными мероприятиями.
+
+## Import Selected Extracted Events
+
+Текущий этап: добавлен импорт выбранных мероприятий из раздела «Импорт документов» в основной реестр мероприятий.
+
+Выполнено:
+
+- [x] Создан доменный сервис `ExtractedEventImporter`.
+- [x] Добавлен расчет плана импорта: количество выбранных мероприятий, уровни образования, предполагаемые модули и возможные дубли.
+- [x] Добавлен экран подтверждения перед импортом.
+- [x] Добавлены варианты обработки совпадений: пропустить, создать новое, заменить существующее.
+- [x] При импорте создаются полноценные карточки `SchoolEvent` в основном реестре `events`.
+- [x] Заполняются название, описание, даты, месяц, уровень образования, модуль, ответственный и источник документа.
+- [x] После импорта показывается отчет: импортировано, пропущено, дубли, заменено.
+- [x] Импортированные мероприятия автоматически попадают в КПВР НОО/ООО/СОО через существующий механизм построения планов из `state.events`.
+- [x] Статус извлеченного мероприятия меняется на `selected` или `ignored` после импорта.
+
+Архитектурные решения:
+
+- Правила импорта и поиска дублей вынесены из React-страницы в `lib/domain/extracted-event-importer.ts`.
+- UI зависит от интерфейса `ExtractedEventImporter`, а не от конкретной реализации.
+- Источник документа сохраняется внутри карточки мероприятия в описании, кратком отчете и поле `partner`, чтобы пользователь видел происхождение импортированных данных.
+- Дубли определяются по схожести названия, совпадению даты и уровня образования; это временная доменная эвристика, которую позже можно заменить более строгим matcher-сервисом.
+
+Следующие шаги:
+
+- [ ] Добавить ручное редактирование извлеченного мероприятия перед импортом.
+- [ ] Добавить просмотр источника документа в карточке мероприятия и быстрый переход к исходному документу.
+- [ ] Заменить mock-извлечение на OpenAI/API-анализатор без изменения UI-контракта `DocumentEventExtractor`.
+
+## School Event Relevance Analysis
+
+Текущий этап: добавлена rule-based оценка релевантности найденных мероприятий для конкретной школы.
+
+Выполнено:
+
+- [x] Создан сервисный контракт `SchoolEventRelevanceAnalyzer`.
+- [x] Добавлена rule-based реализация без OpenAI API.
+- [x] Анализатор принимает `ExtractedEvent` и `AppState`.
+- [x] Анализатор возвращает `relevanceLevel`, `relevanceScore`, `reasons`, `warnings`.
+- [x] В правилах используются паспорт школы, воспитательные объединения, инфраструктура, социальные партнеры, внеурочные программы и существующие мероприятия.
+- [x] Для волонтерского отряда, школьного музея, ЮИД, «Орлят России» и «Движения Первых» добавлены отдельные правила.
+- [x] В таблицу найденных мероприятий добавлены релевантность, балл, причина рекомендации и предупреждения.
+- [x] Добавлен фильтр по высокой, средней и низкой релевантности.
+- [x] Высокорелевантные мероприятия автоматически отмечаются после извлечения.
+- [x] Предупреждения по релевантности показываются перед импортом.
+
+Архитектурные решения:
+
+- Оценка релевантности не сохраняется в `ExtractedEvent`; она вычисляется из текущего `AppState`, чтобы рекомендации менялись при изменении паспорта школы, объединений, инфраструктуры и программ.
+- UI зависит от интерфейса `SchoolEventRelevanceAnalyzer`, поэтому rule-based реализацию можно заменить или дополнить AI-анализатором без переписывания страницы импорта.
+- Дубли существующих мероприятий считаются фактором низкой релевантности и дополнительно остаются в механизме подтверждения импорта.
+
+Следующие шаги:
+
+- [ ] Добавить ручную корректировку оценки релевантности пользователем.
+- [ ] Добавить сохранение принятого решения по каждому найденному мероприятию.
+- [ ] Расширить правила на муниципальные и региональные приоритеты после появления справочника приоритетов школы.
+
+## User Scenario Audit: School To KPVR
+
+Текущий этап: проведен аудит полного пользовательского сценария заместителя директора по воспитательной работе и реализованы быстрые UX-улучшения.
+
+Выполнено:
+
+- [x] Проверен путь: паспорт школы -> воспитательная система -> объединения -> музей -> партнеры -> загрузка плана -> извлечение -> релевантность -> импорт -> КПВР.
+- [x] Добавлен компонент `ScenarioReadiness` с контрольным списком готовности сценария.
+- [x] Чеклист готовности добавлен на страницы `/import-documents` и `/kpvr`.
+- [x] В импорте добавлены массовые действия: выбрать рекомендуемые, выбрать рекомендуемые и возможные, снять нерекомендуемые.
+- [x] После импорта добавлены быстрые переходы в реестр мероприятий и КПВР.
+- [x] В подтверждении импорта сохранены предупреждения по релевантности и дублированию.
+
+Архитектурные решения:
+
+- Сценарная готовность вынесена в отдельный компонент, чтобы не смешивать навигационную помощь с доменной логикой импорта.
+- Компонент готовности читает только `AppState` и не меняет данные, поэтому безопасен для Supabase/localStorage-слоя.
+- Массовый выбор использует уже вычисленную релевантность, не создает отдельного состояния рекомендаций и не требует миграции данных.
+
+Следующие шаги:
+
+- [ ] Исправить битую кириллицу в старых UI-файлах единым проходом.
+- [ ] Добавить мастер первичной настройки школы на 5-7 минут.
+- [ ] Добавить предпросмотр импортируемой карточки мероприятия до сохранения.
+- [ ] Добавить тестовые сценарии Playwright после восстановления browser runtime.
+
+## Stage 13.1: Work Program Engine
+
+Текущий этап: создана архитектурная основа модуля «Рабочая программа воспитания» и первый рабочий раздел «Уклад школы».
+
+Выполнено:
+
+- [x] Добавлен пункт меню «Рабочая программа воспитания».
+- [x] Создана предметная область `work-program`, отделенная от КПВР, мероприятий и экспорта.
+- [x] Добавлены типы `WorkProgram`, `WorkProgramSection`, `SchoolCultureSection`, `GeneratedParagraph`, `GenerationSource`, `WorkProgramVersion`.
+- [x] Добавлены сервисы `SchoolCultureGenerator`, `SchoolTraditionsGenerator`, `SchoolPartnershipGenerator`, `WorkProgramAssembler`.
+- [x] Раздел «Уклад школы» автоматически собирается из паспорта школы, воспитательной системы, объединений, инфраструктуры, партнеров, мероприятий, КПВР и внеурочной деятельности.
+- [x] Реализованы подразделы: общая характеристика, воспитательная среда, объединения, традиции, социальное партнерство, контингент обучающихся.
+- [x] Добавлен алгоритм определения традиций по событиям, приоритету, школьным делам и КПВР.
+- [x] Добавлен редактор абзацев: редактирование, удаление, добавление, восстановление автоматически сформированного текста.
+- [x] Добавлена прозрачность источников для каждого абзаца.
+- [x] Добавлена пересборка раздела с созданием новой версии.
+- [x] Добавлен просмотр и восстановление предыдущих версий.
+- [x] Добавлен экспорт DOCX и печать/сохранение PDF через браузер.
+- [x] Добавлено хранение `WorkProgram` в `AppState` и Supabase-таблице `work_programs`.
+
+Архитектурные решения:
+
+- Текст не является первичным источником: базовая версия всегда пересобирается из данных системы.
+- Пользовательские правки хранятся на уровне `GeneratedParagraph` со статусами `edited`, `added`, `removed`.
+- Источники генерации представлены структурой `GenerationSource`, поэтому можно показывать происхождение каждого абзаца и позже использовать это для AI-пояснений.
+- Генераторы реализованы через интерфейсы, чтобы rule-based генерацию можно было заменить OpenAI, YandexGPT или GigaChat без изменения UI.
+- `WorkProgramAssembler` отвечает за сборку полной программы и уже содержит каркас будущих разделов: целевой, содержательный, организационный, КПВР и приложения.
+
+Следующие шаги:
+
+- [ ] Добавить целевой раздел рабочей программы.
+- [ ] Добавить содержательный раздел с модульной структурой.
+- [ ] Добавить организационный раздел.
+- [ ] Добавить полноценный PDF-экспорт без диалога печати.
+- [ ] Добавить diff-просмотр изменений между версиями.
+## Stage 13.2: Full Work Program
+
+Current stage: full work program model has been expanded from the first "School culture" engine into the central document architecture.
+
+Done:
+
+- [x] Added full domain entities: `WorkProgramSource`, `WorkProgramSubsection`, `WorkProgramProgress`, `GeneratedContent`, section-level versions.
+- [x] Added full program structure: target, content, organizational, KPVR and appendices sections.
+- [x] Added target section scaffolding for NОО, ООО and СОО goals and target orientations.
+- [x] Added dynamic content generation by active education modules, events, KPVR, extracurricular activities, associations and partners.
+- [x] Added organizational section scaffolding: staffing, normative-methodical support, work conditions, encouragement, analysis.
+- [x] Preserved editable "School culture" section and connected it to the full program source map.
+- [x] Added readiness progress for the whole program, sections and subsections.
+- [x] Added per-paragraph source map for transparency and future AI explanations.
+- [x] Added section-level version history and restore path.
+- [x] Reworked DOCX export to export the full work program, not only school culture.
+- [x] Kept PDF as print/export architecture path.
+- [x] Added localStorage and Supabase normalization for older saved `WorkProgram` data.
+
+Architectural decisions:
+
+- Text remains generated from `AppState`; manual text edits are supported only as paragraph-level overrides.
+- The UI depends on `WorkProgramAssembler`, not on a concrete AI provider.
+- Rule-based generators implement the current behavior and can later be replaced by OpenAI, GigaChat or YandexGPT adapters without changing the page contract.
+- Section progress is computed from data availability and review requirements, so the document can show honest readiness instead of pretending to be complete.
+
+Next steps:
+
+- [ ] Add real target-orientation catalogs by education level and direction of upbringing.
+- [ ] Add a visual diff between section versions.
+- [ ] Add native PDF generation instead of browser print.
+- [ ] Add review workflow: "accepted by deputy", "requires methodist review", "ready for approval".
+- [ ] Add AI generator adapters behind the existing `SectionGenerator` and `WorkProgramAssembler` contracts.
+## Stage 14: Normative Center
+
+Current stage: added the rule-based Normative Center for tracking regulatory documents and checking the work program against selected sources.
+
+Done:
+
+- [x] Added page `/normative-documents`.
+- [x] Added menu item "Нормативные документы".
+- [x] Added domain types: `NormativeDocument`, `NormativeRequirement`, `NormativeDocumentComparison`, `WorkProgramComplianceResult`, `WorkProgramDiscrepancy`, `NormativeRecommendation`.
+- [x] Added rule-based service `NormativeDocumentAnalyzer`.
+- [x] Added upload metadata flow for federal, regional, municipal and local documents.
+- [x] Added actuality statuses: current, needs review, outdated.
+- [x] Added document comparison mode: added, removed, changed.
+- [x] Added work program check against the work program, KPVR and educational system.
+- [x] Added recommendation architecture with source document and target section.
+- [x] Added `normativeDocuments` to `AppState`, localStorage migration and Supabase repository sync.
+- [x] Added Supabase table `normative_documents` with JSONB requirements.
+
+Architectural decisions:
+
+- The current analyzer is rule-based and works through the `NormativeDocumentAnalyzer` interface.
+- File contents are not parsed yet; requirements are inferred from document category and can later be replaced by AI extraction.
+- Normalized requirements are stored separately from uploaded file metadata so future OpenAI, GigaChat or YandexGPT analyzers can add richer structures without rewriting the UI.
+- The check result is computed from current `AppState`, so recommendations react to changes in work program, KPVR, events and educational system.
+
+Next steps:
+
+- [ ] Add text extraction from DOCX/PDF/XLSX.
+- [ ] Add manual editing of extracted normative requirements.
+- [ ] Add version diff with exact paragraph-level changes.
+- [ ] Add AI analyzer adapter behind `NormativeDocumentAnalyzer`.
+- [ ] Feed accepted normative requirements into the work program generator.
+## Stage 15: Production-Ready Document Engine
+
+Current stage: created the `document-processing` domain as the foundation for AI-ready document workflows without using external LLMs.
+
+Done:
+
+- [x] Added page `/document-processing`.
+- [x] Added menu item "Документный движок".
+- [x] Added unified model `NormalizedDocument`.
+- [x] Added processing records and logs to `AppState`.
+- [x] Added `DocumentStorageLayer` with browser storage and IndexedDB persistence path.
+- [x] Added `DocumentTextExtractor` implementations for DOCX, PDF and XLSX.
+- [x] Added `DocumentStructureExtractor` for sections, tables, lists and appendices.
+- [x] Added `DocumentNormalizer`.
+- [x] Added `DocumentValidator` with `Excellent`, `Good`, `Needs Review`, `Invalid`, `Requires OCR`.
+- [x] Added `DocumentAnalysisPreparation` for future AI payloads.
+- [x] Added interfaces: `DocumentAIAnalyzer`, `NormativeAIAnalyzer`, `WorkProgramAIAnalyzer`, `EventAIAnalyzer`.
+- [x] Added processing log visible to the user.
+- [x] Added manual confirmation: processed data does not update KPVR, work program or normative center automatically.
+- [x] Added security checks for extension, MIME type and 50 MB size limit.
+- [x] Added Supabase `document_processing_state` table for processing index/logs.
+- [x] Added QA scenarios in `docs/document-processing-test-scenarios.md`.
+
+Architectural decisions:
+
+- File storage, text extraction, structure extraction, normalization, validation and AI preparation are separate services.
+- Business logic is outside UI; the page calls only the pipeline.
+- Scanned PDFs are detected and marked `requires_ocr`; the system does not fake text analysis.
+- Heavy file content is not mixed into normative documents, KPVR or work-program models.
+- AI contracts are defined but not implemented; no OpenAI, GigaChat, YandexGPT or external LLM is called.
+
+Next steps:
+
+- [ ] Add real OCR adapter behind a separate OCR interface.
+- [ ] Persist full normalized documents in object storage or a dedicated Supabase table with size controls.
+- [ ] Add worker-based processing for very large files to improve UI responsiveness further.
+- [ ] Add manual mapping from confirmed normalized sections to KPVR, normative requirements and work-program sections.
+- [ ] Add AI adapters after user confirmation and policy review.
+## Stage 16.1: Federal Knowledge Base
+
+Current stage: created the read-only `federal-knowledge` domain as the basis for checking the work program against federal requirements.
+
+Done:
+
+- [x] Added domain folder `lib/domain/federal-knowledge`.
+- [x] Added types: `FederalDirection`, `FederalProgramSection`, `FederalRequirement`, `FederalTargetResult`, `FederalKnowledgeBase`.
+- [x] Added federal directions of upbringing.
+- [x] Added mandatory work-program section reference with presence and completeness criteria.
+- [x] Added target-result reference for НОО, ООО and СОО.
+- [x] Added page `/federal-knowledge`.
+- [x] Added filters by education level and search by target results.
+- [x] Added menu item "Федеральная база знаний".
+
+Architectural decisions:
+
+- Federal knowledge is static reference data and is not stored in `AppState`.
+- The domain does not duplicate user-defined education modules or work-program sections.
+- `work-program` is not rewritten; future checks can consume this knowledge base through imports.
+- No OpenAI, GigaChat, YandexGPT or other LLM is used.
+
+Next steps:
+
+- [ ] Add a checker that maps `FederalProgramSection` criteria to generated `WorkProgram` sections.
+- [ ] Add target-result coverage report by education level and direction.
+- [ ] Connect confirmed normative requirements from the Normative Center to the federal knowledge checks.

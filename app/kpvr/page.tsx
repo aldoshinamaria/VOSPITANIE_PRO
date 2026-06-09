@@ -6,6 +6,7 @@ import { ClipboardList, GraduationCap, School } from "lucide-react";
 import { useAppState } from "@/components/app/app-provider";
 import { MetricCard } from "@/components/app/metric-card";
 import { PageHeader } from "@/components/app/page-header";
+import { ScenarioReadiness } from "@/components/app/scenario-readiness";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -48,6 +49,10 @@ export default function KpvrPage() {
         <MetricCard title="План НОО" value={documents.noo.totalRows} icon={School} />
         <MetricCard title="План ООО" value={documents.ooo.totalRows} icon={GraduationCap} />
         <MetricCard title="План СОО" value={documents.soo.totalRows} icon={ClipboardList} />
+      </div>
+
+      <div className="mt-6">
+        <ScenarioReadiness state={state} />
       </div>
 
       <Card className="mt-6">

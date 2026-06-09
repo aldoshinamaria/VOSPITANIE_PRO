@@ -1,4 +1,5 @@
 import type { AppState } from "@/types/domain";
+import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
 
 export const mockAppState: AppState = {
   schoolPassport: {
@@ -282,6 +283,65 @@ export const mockAppState: AppState = {
       status: "active"
     }
   ],
+  educationalSystem: {
+    associations: [
+      {
+        id: "association-volunteers-1",
+        type: "volunteer_team",
+        title: "Правнуки Победы",
+        description: "Волонтерский отряд для патриотических акций, помощи ветеранам и школьных социальных инициатив.",
+        leader: "Петрова Анна Викторовна",
+        participantsCount: 28,
+        classes: "7-11",
+        photoUrl: "",
+        status: "active"
+      },
+      {
+        id: "association-museum-1",
+        type: "school_museum",
+        title: "МИР отстояли - МИР защитим!",
+        description: "Школьный музейный актив, поисковая и экскурсионная работа, подготовка памятных мероприятий.",
+        leader: "Смирнова Елена Олеговна",
+        participantsCount: 16,
+        classes: "5-10",
+        photoUrl: "",
+        status: "active"
+      }
+    ],
+    infrastructureObjects: [
+      {
+        id: "infrastructure-assembly-hall",
+        type: "assembly_hall",
+        title: "Актовый зал",
+        description: "Пространство для общешкольных событий, концертов, встреч и церемоний.",
+        responsible: "Заместитель директора по ВР"
+      },
+      {
+        id: "infrastructure-cdi",
+        type: "child_initiatives_center",
+        title: "Центр детских инициатив",
+        description: "Площадка для работы школьного актива, Движения Первых и проектных групп.",
+        responsible: "Советник директора"
+      }
+    ],
+    partners: [
+      {
+        id: "system-partner-veterans",
+        title: "Совет ветеранов",
+        type: "Общественная организация",
+        cooperationDescription: "Уроки мужества, памятные акции, встречи с обучающимися.",
+        contactPerson: "Иванов Сергей Петрович"
+      }
+    ]
+  },
+  importedDocuments: [],
+  extractedEvents: [],
+  normativeDocuments: [],
+  processedDocuments: [],
+  documentProcessingLogs: [],
+  get workProgram() {
+    return createEmptyWorkProgram(this as AppState);
+  },
   exportDocuments: [
     {
       id: "export-1",

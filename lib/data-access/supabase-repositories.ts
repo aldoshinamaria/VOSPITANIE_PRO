@@ -2,25 +2,66 @@ import { mockAppState } from "@/data/mock-data";
 import type {
   EventInsert,
   EventRow,
+  DocumentProcessingStateInsert,
+  EducationalAssociationInsert,
+  EducationalAssociationRow,
+  EducationalSystemPartnerInsert,
+  EducationalSystemPartnerRow,
+  ExtractedEventInsert,
+  ExtractedEventRow,
   ExtracurricularProgramInsert,
   ExtracurricularProgramRow,
+  ImportedDocumentInsert,
+  ImportedDocumentRow,
   ModuleInsert,
   ModuleRow,
+  NormativeDocumentInsert,
+  NormativeDocumentRow,
   PartnerInsert,
   PartnerRow,
   SchoolInsert,
+  SchoolInfrastructureObjectInsert,
+  SchoolInfrastructureObjectRow,
   SchoolRow,
   StaffInsert,
-  SupabaseBrowserClient
+  SupabaseBrowserClient,
+  WorkProgramInsert,
+  WorkProgramRow
 } from "@/lib/supabase/client";
+import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { createId } from "@/lib/utils";
 import type { AppState } from "@/types/app-state";
 import type { EducationLevel, Priority } from "@/types/common";
+import type { DocumentProcessingLogEntry, DocumentProcessingRecord } from "@/types/document-processing";
+import type {
+  EducationalAssociation,
+  EducationalAssociationType,
+  EducationalSystem,
+  EducationalSystemPartner,
+  EducationalSystemStatus,
+  InfrastructureObjectType,
+  SchoolInfrastructureObject
+} from "@/types/educational-system";
 import type { EventStatus, SchoolEvent } from "@/types/events";
 import type { ExtraActivity, ExtraActivityStatus, ExtraActivityType } from "@/types/extra-activities";
+import type {
+  ExtractedEvent,
+  ExtractedEventStatus,
+  ImportedDocument,
+  ImportedDocumentStatus,
+  ImportedDocumentType
+} from "@/types/imported-documents";
 import type { EducationModule } from "@/types/modules";
+import type {
+  NormativeDocument,
+  NormativeDocumentActualityStatus,
+  NormativeDocumentCategory,
+  NormativeDocumentLevel,
+  NormativeRequirement
+} from "@/types/normative-documents";
 import type { SchoolInfrastructure, SchoolPassport, SocialPartner } from "@/types/school";
+import type { WorkProgram } from "@/types/work-program";
 import type {
   AppDataAccess,
   EventRepository,
@@ -95,13 +136,26 @@ class SupabaseAppRepository {
   async getState(): Promise<AppState> {
     const school = await this.getCurrentSchool();
 
-    return {
+    const baseState = {
       schoolPassport: await this.getPassport(school.id),
       educationModules: await this.listModules(school.id),
       events: await this.listEvents(school.id),
       kpvr: mockAppState.kpvr,
       extraActivities: await this.listExtraActivities(school.id),
+      educationalSystem: await this.getEducationalSystem(school.id),
+      importedDocuments: await this.listImportedDocuments(school.id),
+      extractedEvents: await this.listExtractedEvents(school.id),
+      normativeDocuments: await this.listNormativeDocuments(school.id),
+      processedDocuments: mockAppState.processedDocuments,
+      documentProcessingLogs: mockAppState.documentProcessingLogs,
+      workProgram: mockAppState.workProgram,
       exportDocuments: mockAppState.exportDocuments
+    };
+
+    return {
+      ...baseState,
+      ...(await this.getDocumentProcessingState(school.id)),
+      workProgram: await this.getWorkProgram(school.id, baseState)
     };
   }
 
@@ -112,6 +166,12 @@ class SupabaseAppRepository {
       this.replaceModules(school.id, state.educationModules),
       this.replaceEvents(school.id, state.events),
       this.replaceExtraActivities(school.id, state.extraActivities),
+      this.replaceEducationalSystem(school.id, state.educationalSystem),
+      this.replaceImportedDocuments(school.id, state.importedDocuments),
+      this.replaceExtractedEvents(school.id, state.extractedEvents),
+      this.replaceNormativeDocuments(school.id, state.normativeDocuments),
+      this.saveDocumentProcessingState(school.id, state),
+      this.saveWorkProgram(school.id, state.workProgram),
       this.syncStaff(school.id, state)
     ]);
   }
@@ -123,6 +183,14 @@ class SupabaseAppRepository {
       this.client.from("extracurricular_programs").delete().eq("school_id", schoolId),
       this.client.from("modules").delete().eq("school_id", schoolId),
       this.client.from("partners").delete().eq("school_id", schoolId),
+      this.client.from("educational_associations").delete().eq("school_id", schoolId),
+      this.client.from("school_infrastructure_objects").delete().eq("school_id", schoolId),
+      this.client.from("educational_system_partners").delete().eq("school_id", schoolId),
+      this.client.from("imported_documents").delete().eq("school_id", schoolId),
+      this.client.from("extracted_events").delete().eq("school_id", schoolId),
+      this.client.from("normative_documents").delete().eq("school_id", schoolId),
+      this.client.from("document_processing_state").delete().eq("school_id", schoolId),
+      this.client.from("work_programs").delete().eq("school_id", schoolId),
       this.client.from("staff").delete().eq("school_id", schoolId)
     ]);
 
@@ -301,6 +369,261 @@ class SupabaseAppRepository {
 
     if (error) {
       throw toRepositoryError("Не удалось удалить программу внеурочной деятельности", error);
+    }
+  }
+
+  async getEducationalSystem(schoolId: string): Promise<EducationalSystem> {
+    const [associationsResult, infrastructureResult, partnersResult] = await Promise.all([
+      this.client.from("educational_associations").select("*").eq("school_id", schoolId).order("title"),
+      this.client.from("school_infrastructure_objects").select("*").eq("school_id", schoolId).order("title"),
+      this.client.from("educational_system_partners").select("*").eq("school_id", schoolId).order("title")
+    ]);
+
+    if (associationsResult.error) {
+      throw toRepositoryError("Не удалось загрузить воспитательные объединения", associationsResult.error);
+    }
+
+    if (infrastructureResult.error) {
+      throw toRepositoryError("Не удалось загрузить инфраструктуру воспитательной системы", infrastructureResult.error);
+    }
+
+    if (partnersResult.error) {
+      throw toRepositoryError("Не удалось загрузить партнеров воспитательной системы", partnersResult.error);
+    }
+
+    return {
+      associations:
+        associationsResult.data && associationsResult.data.length > 0
+          ? associationsResult.data.map(mapEducationalAssociationRow)
+          : mockAppState.educationalSystem.associations,
+      infrastructureObjects:
+        infrastructureResult.data && infrastructureResult.data.length > 0
+          ? infrastructureResult.data.map(mapSchoolInfrastructureObjectRow)
+          : mockAppState.educationalSystem.infrastructureObjects,
+      partners:
+        partnersResult.data && partnersResult.data.length > 0
+          ? partnersResult.data.map(mapEducationalSystemPartnerRow)
+          : mockAppState.educationalSystem.partners
+    };
+  }
+
+  async replaceEducationalSystem(schoolId: string, system: EducationalSystem): Promise<EducationalSystem> {
+    await Promise.all([
+      deleteMissingRows(
+        this.client,
+        "educational_associations",
+        schoolId,
+        system.associations.map((association) => association.id)
+      ),
+      deleteMissingRows(
+        this.client,
+        "school_infrastructure_objects",
+        schoolId,
+        system.infrastructureObjects.map((object) => object.id)
+      ),
+      deleteMissingRows(
+        this.client,
+        "educational_system_partners",
+        schoolId,
+        system.partners.map((partner) => partner.id)
+      )
+    ]);
+
+    const [associationsResult, infrastructureResult, partnersResult] = await Promise.all([
+      system.associations.length > 0
+        ? this.client
+            .from("educational_associations")
+            .upsert(system.associations.map((association) => mapEducationalAssociationToInsert(schoolId, association)))
+        : Promise.resolve({ error: null }),
+      system.infrastructureObjects.length > 0
+        ? this.client
+            .from("school_infrastructure_objects")
+            .upsert(system.infrastructureObjects.map((object) => mapSchoolInfrastructureObjectToInsert(schoolId, object)))
+        : Promise.resolve({ error: null }),
+      system.partners.length > 0
+        ? this.client
+            .from("educational_system_partners")
+            .upsert(system.partners.map((partner) => mapEducationalSystemPartnerToInsert(schoolId, partner)))
+        : Promise.resolve({ error: null })
+    ]);
+
+    if (associationsResult.error) {
+      throw toRepositoryError("Не удалось сохранить воспитательные объединения", associationsResult.error);
+    }
+
+    if (infrastructureResult.error) {
+      throw toRepositoryError("Не удалось сохранить инфраструктуру воспитательной системы", infrastructureResult.error);
+    }
+
+    if (partnersResult.error) {
+      throw toRepositoryError("Не удалось сохранить партнеров воспитательной системы", partnersResult.error);
+    }
+
+    return this.getEducationalSystem(schoolId);
+  }
+
+  async listImportedDocuments(schoolId: string): Promise<ImportedDocument[]> {
+    const { data, error } = await this.client
+      .from("imported_documents")
+      .select("*")
+      .eq("school_id", schoolId)
+      .order("uploaded_at", { ascending: false });
+
+    if (error) {
+      throw toRepositoryError("Не удалось загрузить импортированные документы", error);
+    }
+
+    return (data ?? []).map(mapImportedDocumentRow);
+  }
+
+  async replaceImportedDocuments(schoolId: string, documents: ImportedDocument[]): Promise<ImportedDocument[]> {
+    await deleteMissingRows(
+      this.client,
+      "imported_documents",
+      schoolId,
+      documents.map((document) => document.id)
+    );
+
+    if (documents.length > 0) {
+      const { error } = await this.client
+        .from("imported_documents")
+        .upsert(documents.map((document) => mapImportedDocumentToInsert(schoolId, document)));
+
+      if (error) {
+        throw toRepositoryError("Не удалось сохранить импортированные документы", error);
+      }
+    }
+
+    return this.listImportedDocuments(schoolId);
+  }
+
+  async listExtractedEvents(schoolId: string): Promise<ExtractedEvent[]> {
+    const { data, error } = await this.client
+      .from("extracted_events")
+      .select("*")
+      .eq("school_id", schoolId)
+      .order("date", { ascending: true });
+
+    if (error) {
+      throw toRepositoryError("Не удалось загрузить найденные мероприятия", error);
+    }
+
+    return (data ?? []).map(mapExtractedEventRow);
+  }
+
+  async replaceExtractedEvents(schoolId: string, events: ExtractedEvent[]): Promise<ExtractedEvent[]> {
+    await deleteMissingRows(
+      this.client,
+      "extracted_events",
+      schoolId,
+      events.map((event) => event.id)
+    );
+
+    if (events.length > 0) {
+      const { error } = await this.client
+        .from("extracted_events")
+        .upsert(events.map((event) => mapExtractedEventToInsert(schoolId, event)));
+
+      if (error) {
+        throw toRepositoryError("Не удалось сохранить найденные мероприятия", error);
+      }
+    }
+
+    return this.listExtractedEvents(schoolId);
+  }
+
+  async listNormativeDocuments(schoolId: string): Promise<NormativeDocument[]> {
+    const { data, error } = await this.client
+      .from("normative_documents")
+      .select("*")
+      .eq("school_id", schoolId)
+      .order("document_date", { ascending: false });
+
+    if (error) {
+      throw toRepositoryError("Не удалось загрузить нормативные документы", error);
+    }
+
+    return (data ?? []).map(mapNormativeDocumentRow);
+  }
+
+  async replaceNormativeDocuments(schoolId: string, documents: NormativeDocument[]): Promise<NormativeDocument[]> {
+    await deleteMissingRows(
+      this.client,
+      "normative_documents",
+      schoolId,
+      documents.map((document) => document.id)
+    );
+
+    if (documents.length > 0) {
+      const { error } = await this.client
+        .from("normative_documents")
+        .upsert(documents.map((document) => mapNormativeDocumentToInsert(schoolId, document)));
+
+      if (error) {
+        throw toRepositoryError("Не удалось сохранить нормативные документы", error);
+      }
+    }
+
+    return this.listNormativeDocuments(schoolId);
+  }
+
+  async getDocumentProcessingState(schoolId: string): Promise<Pick<AppState, "processedDocuments" | "documentProcessingLogs">> {
+    const { data, error } = await this.client
+      .from("document_processing_state")
+      .select("*")
+      .eq("school_id", schoolId)
+      .maybeSingle();
+
+    if (error) {
+      throw toRepositoryError("Не удалось загрузить состояние обработки документов", error);
+    }
+
+    if (!data) {
+      return {
+        processedDocuments: mockAppState.processedDocuments,
+        documentProcessingLogs: mockAppState.documentProcessingLogs
+      };
+    }
+
+    return {
+      processedDocuments: Array.isArray(data.processed_documents) ? (data.processed_documents as DocumentProcessingRecord[]) : [],
+      documentProcessingLogs: Array.isArray(data.logs) ? (data.logs as DocumentProcessingLogEntry[]) : []
+    };
+  }
+
+  async saveDocumentProcessingState(schoolId: string, state: AppState): Promise<void> {
+    const { error } = await this.client.from("document_processing_state").upsert({
+      id: `${schoolId}-document-processing`,
+      school_id: schoolId,
+      processed_documents: state.processedDocuments,
+      logs: state.documentProcessingLogs,
+      updated_at: new Date().toISOString()
+    } satisfies DocumentProcessingStateInsert);
+
+    if (error) {
+      throw toRepositoryError("Не удалось сохранить состояние обработки документов", error);
+    }
+  }
+
+  async getWorkProgram(schoolId: string, state: AppState): Promise<WorkProgram> {
+    const { data, error } = await this.client
+      .from("work_programs")
+      .select("*")
+      .eq("school_id", schoolId)
+      .maybeSingle();
+
+    if (error) {
+      throw toRepositoryError("Не удалось загрузить рабочую программу воспитания", error);
+    }
+
+    return data?.data ? normalizeWorkProgram(data as WorkProgramRow, state) : createEmptyWorkProgram(state);
+  }
+
+  async saveWorkProgram(schoolId: string, program: WorkProgram): Promise<void> {
+    const { error } = await this.client.from("work_programs").upsert(mapWorkProgramToInsert(schoolId, program));
+
+    if (error) {
+      throw toRepositoryError("Не удалось сохранить рабочую программу воспитания", error);
     }
   }
 
@@ -513,6 +836,12 @@ function mapEventRow(row: EventRow): SchoolEvent {
     responsible: row.responsible,
     coExecutors: row.co_executors,
     partner: row.partner,
+    associationId: row.association_id || "",
+    infrastructureObjectId: row.infrastructure_object_id || "",
+    systemPartnerId: row.system_partner_id || "",
+    sourceDocumentId: row.source_document_id || "",
+    sourceDocumentTitle: row.source_document_title || "",
+    sourceDocumentType: row.source_document_type ? normalizeImportedDocumentType(row.source_document_type) : undefined,
     status: normalizeEventStatus(row.status),
     participantsCount: row.participants_count,
     shortReport: row.short_report,
@@ -537,10 +866,225 @@ function mapEventToInsert(schoolId: string, event: SchoolEvent): EventInsert {
     responsible: event.responsible,
     co_executors: event.coExecutors,
     partner: event.partner,
+    association_id: event.associationId ?? "",
+    infrastructure_object_id: event.infrastructureObjectId ?? "",
+    system_partner_id: event.systemPartnerId ?? "",
+    source_document_id: event.sourceDocumentId ?? "",
+    source_document_title: event.sourceDocumentTitle ?? "",
+    source_document_type: event.sourceDocumentType ?? "",
     status: event.status,
     participants_count: event.participantsCount,
     short_report: event.shortReport,
     priority: event.priority
+  };
+}
+
+function mapEducationalAssociationRow(row: EducationalAssociationRow): EducationalAssociation {
+  return {
+    id: row.id,
+    type: normalizeAssociationType(row.type),
+    title: row.title,
+    description: row.description,
+    leader: row.leader,
+    participantsCount: row.participants_count,
+    classes: row.classes,
+    photoUrl: row.photo_url,
+    status: normalizeEducationalSystemStatus(row.status)
+  };
+}
+
+function mapEducationalAssociationToInsert(
+  schoolId: string,
+  association: EducationalAssociation
+): EducationalAssociationInsert {
+  return {
+    id: association.id,
+    school_id: schoolId,
+    type: association.type,
+    title: association.title,
+    description: association.description,
+    leader: association.leader,
+    participants_count: association.participantsCount,
+    classes: association.classes,
+    photo_url: association.photoUrl,
+    status: association.status
+  };
+}
+
+function mapSchoolInfrastructureObjectRow(row: SchoolInfrastructureObjectRow): SchoolInfrastructureObject {
+  return {
+    id: row.id,
+    type: normalizeInfrastructureObjectType(row.type),
+    title: row.title,
+    description: row.description,
+    responsible: row.responsible
+  };
+}
+
+function mapSchoolInfrastructureObjectToInsert(
+  schoolId: string,
+  object: SchoolInfrastructureObject
+): SchoolInfrastructureObjectInsert {
+  return {
+    id: object.id,
+    school_id: schoolId,
+    type: object.type,
+    title: object.title,
+    description: object.description,
+    responsible: object.responsible
+  };
+}
+
+function mapImportedDocumentRow(row: ImportedDocumentRow): ImportedDocument {
+  return {
+    id: row.id,
+    title: row.title,
+    type: normalizeImportedDocumentType(row.type),
+    uploadedAt: row.uploaded_at,
+    sizeBytes: row.size_bytes,
+    status: normalizeImportedDocumentStatus(row.status)
+  };
+}
+
+function mapImportedDocumentToInsert(schoolId: string, document: ImportedDocument): ImportedDocumentInsert {
+  return {
+    id: document.id,
+    school_id: schoolId,
+    title: document.title,
+    type: document.type,
+    uploaded_at: document.uploadedAt,
+    size_bytes: document.sizeBytes,
+    status: document.status
+  };
+}
+
+function mapExtractedEventRow(row: ExtractedEventRow): ExtractedEvent {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    date: row.date,
+    month: row.month,
+    educationLevel: normalizeEducationLevel(row.education_level),
+    module: row.module,
+    responsible: row.responsible,
+    sourceDocumentId: row.source_document_id,
+    sourceType: normalizeImportedDocumentType(row.source_type),
+    confidence: row.confidence,
+    status: normalizeExtractedEventStatus(row.status)
+  };
+}
+
+function mapExtractedEventToInsert(schoolId: string, event: ExtractedEvent): ExtractedEventInsert {
+  return {
+    id: event.id,
+    school_id: schoolId,
+    title: event.title,
+    description: event.description,
+    date: event.date,
+    month: event.month,
+    education_level: event.educationLevel,
+    module: event.module,
+    responsible: event.responsible,
+    source_document_id: event.sourceDocumentId,
+    source_type: event.sourceType,
+    confidence: event.confidence,
+    status: event.status
+  };
+}
+
+function mapEducationalSystemPartnerRow(row: EducationalSystemPartnerRow): EducationalSystemPartner {
+  return {
+    id: row.id,
+    title: row.title,
+    type: row.type,
+    cooperationDescription: row.cooperation_description,
+    contactPerson: row.contact_person
+  };
+}
+
+function mapEducationalSystemPartnerToInsert(
+  schoolId: string,
+  partner: EducationalSystemPartner
+): EducationalSystemPartnerInsert {
+  return {
+    id: partner.id,
+    school_id: schoolId,
+    title: partner.title,
+    type: partner.type,
+    cooperation_description: partner.cooperationDescription,
+    contact_person: partner.contactPerson
+  };
+}
+
+function mapNormativeDocumentRow(row: NormativeDocumentRow): NormativeDocument {
+  return {
+    id: row.id,
+    title: row.title,
+    category: normalizeNormativeDocumentCategory(row.category),
+    level: normalizeNormativeDocumentLevel(row.level),
+    documentDate: row.document_date,
+    version: row.version,
+    source: row.source,
+    actualityStatus: normalizeNormativeDocumentActualityStatus(row.actuality_status),
+    uploadedAt: row.uploaded_at,
+    fileName: row.file_name,
+    fileType: row.file_type,
+    sizeBytes: row.size_bytes,
+    requirements: Array.isArray(row.requirements) ? (row.requirements as NormativeRequirement[]) : []
+  };
+}
+
+function mapNormativeDocumentToInsert(schoolId: string, document: NormativeDocument): NormativeDocumentInsert {
+  return {
+    id: document.id,
+    school_id: schoolId,
+    title: document.title,
+    category: document.category,
+    level: document.level,
+    document_date: document.documentDate,
+    version: document.version,
+    source: document.source,
+    actuality_status: document.actualityStatus,
+    uploaded_at: document.uploadedAt,
+    file_name: document.fileName,
+    file_type: document.fileType,
+    size_bytes: document.sizeBytes,
+    requirements: document.requirements
+  };
+}
+
+function normalizeWorkProgram(row: WorkProgramRow, state: AppState): WorkProgram {
+  const data = row.data as Partial<WorkProgram> | null;
+  const generated = createEmptyWorkProgram(state);
+
+  if (
+    !data?.schoolCulture ||
+    !Array.isArray(data.versions) ||
+    !data.progress ||
+    !Array.isArray(data.sections) ||
+    !data.sections.every((section) => Array.isArray(section.subsections))
+  ) {
+    return generated;
+  }
+
+  return {
+    ...generated,
+    ...data,
+    academicYear: data.academicYear ?? state.schoolPassport.academicYear,
+    progress: data.progress ?? generated.progress,
+    sections: data.sections ?? generated.sections,
+    sectionVersions: data.sectionVersions ?? generated.sectionVersions,
+    updatedAt: row.updated_at ?? data.updatedAt ?? new Date().toISOString()
+  };
+}
+
+function mapWorkProgramToInsert(schoolId: string, program: WorkProgram): WorkProgramInsert {
+  return {
+    id: program.id,
+    school_id: schoolId,
+    data: program,
+    updated_at: new Date().toISOString()
   };
 }
 
@@ -595,6 +1139,10 @@ function normalizeEducationLevels(value: string[]): EducationLevel[] {
   return levels.length > 0 ? levels : ["ooo"];
 }
 
+function normalizeEducationLevel(value: string): EducationLevel {
+  return value === "noo" || value === "soo" ? value : "ooo";
+}
+
 function normalizeEventStatus(value: string): EventStatus {
   return value === "completed" || value === "cancelled" ? value : "planned";
 }
@@ -603,12 +1151,102 @@ function normalizePriority(value: string): Priority {
   return value === "low" || value === "high" ? value : "medium";
 }
 
+function normalizeAssociationType(value: string): EducationalAssociationType {
+  const allowed = new Set<EducationalAssociationType>([
+    "volunteer_team",
+    "school_museum",
+    "theater",
+    "media_center",
+    "yuid",
+    "yunarmiya",
+    "eaglets_of_russia",
+    "first_movement",
+    "sports_club",
+    "custom"
+  ]);
+
+  return allowed.has(value as EducationalAssociationType) ? (value as EducationalAssociationType) : "custom";
+}
+
+function normalizeInfrastructureObjectType(value: string): InfrastructureObjectType {
+  const allowed = new Set<InfrastructureObjectType>([
+    "museum",
+    "media_center",
+    "assembly_hall",
+    "gym",
+    "library",
+    "child_initiatives_center",
+    "museum_room",
+    "subject_classrooms"
+  ]);
+
+  return allowed.has(value as InfrastructureObjectType) ? (value as InfrastructureObjectType) : "subject_classrooms";
+}
+
+function normalizeEducationalSystemStatus(value: string): EducationalSystemStatus {
+  return value === "inactive" ? "inactive" : "active";
+}
+
+function normalizeImportedDocumentType(value: string): ImportedDocumentType {
+  if (value === "pdf" || value === "xlsx") {
+    return value;
+  }
+
+  return "docx";
+}
+
+function normalizeImportedDocumentStatus(value: string): ImportedDocumentStatus {
+  if (value === "pending" || value === "processed" || value === "error") {
+    return value;
+  }
+
+  return "uploaded";
+}
+
+function normalizeExtractedEventStatus(value: string): ExtractedEventStatus {
+  if (value === "selected" || value === "ignored") {
+    return value;
+  }
+
+  return "found";
+}
+
 function normalizeExtraActivityType(value: string): ExtraActivityType {
   return value === "additional_education" ? "additional_education" : "extracurricular";
 }
 
 function normalizeExtraActivityStatus(value: string): ExtraActivityStatus {
   return value === "inactive" ? "inactive" : "active";
+}
+
+function normalizeNormativeDocumentCategory(value: string): NormativeDocumentCategory {
+  if (
+    value === "federal_work_program" ||
+    value === "federal_calendar_plan" ||
+    value === "regional_document" ||
+    value === "municipal_document" ||
+    value === "local_school_document"
+  ) {
+    return value;
+  }
+
+  return "local_school_document";
+}
+
+function normalizeNormativeDocumentLevel(value: string): NormativeDocumentLevel {
+  if (value === "federal" || value === "regional" || value === "municipal" || value === "local") {
+    return value;
+  }
+
+  return "local";
+}
+
+function normalizeNormativeDocumentActualityStatus(value: string): NormativeDocumentActualityStatus {
+  if (value === "current" || value === "outdated") {
+    return value;
+  }
+
+  return "needs_review";
 }
 
 function collectStaff(schoolId: string, state: AppState): StaffInsert[] {
@@ -644,7 +1282,18 @@ function collectStaff(schoolId: string, state: AppState): StaffInsert[] {
 
 async function deleteMissingRows(
   client: SupabaseBrowserClient,
-  table: "events" | "extracurricular_programs" | "modules" | "partners" | "staff",
+  table:
+    | "events"
+    | "extracurricular_programs"
+    | "modules"
+    | "partners"
+    | "staff"
+    | "educational_associations"
+    | "school_infrastructure_objects"
+    | "educational_system_partners"
+    | "imported_documents"
+    | "extracted_events"
+    | "normative_documents",
   schoolId: string,
   nextIds: string[]
 ) {
