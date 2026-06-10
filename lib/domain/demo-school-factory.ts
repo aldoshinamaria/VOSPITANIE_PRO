@@ -1,5 +1,6 @@
 import { mockAppState } from "@/data/mock-data";
 import { migrateEventDirectionRelations, standardActivityDirections } from "@/lib/domain/activity-directions";
+import { migrateEventExecutions } from "@/lib/domain/event-execution";
 import { createWorkProgramAssembler } from "@/lib/domain/work-program/work-program-assembler";
 import type {
   AppState,
@@ -81,6 +82,7 @@ class RuleBasedDemoSchoolFactory implements DemoSchoolFactory {
       },
       activityDirections: standardActivityDirections,
       eventDirectionRelations: [],
+      eventExecutions: [],
       events: [],
       kpvr: [],
       extraActivities: [],
@@ -117,6 +119,7 @@ class RuleBasedDemoSchoolFactory implements DemoSchoolFactory {
       educationModules,
       activityDirections,
       eventDirectionRelations: migrateEventDirectionRelations(events, activityDirections),
+      eventExecutions: migrateEventExecutions(events),
       events,
       kpvr: createKpvrItems(events),
       extraActivities,

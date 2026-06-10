@@ -32,6 +32,44 @@ export type {
   ActivityMatrixRow,
   ActivityMatrixStatusSummary
 } from "@/types/activity-matrix";
+export type {
+  ActivityReport,
+  ActivityReportExportOptions,
+  ActivityReportFilter,
+  ActivityReportInsight,
+  ActivityReportInsightType,
+  ActivityReportPeriodMode,
+  ActivityReportProjection,
+  ActivityReportRecommendation,
+  ActivityReportRisk,
+  ActivityReportRiskLevel,
+  ActivityReportSection,
+  ActivityReportSourceProjection,
+  ActivityReportStatistics,
+  ActivityReportTemplate,
+  ReportAIAnalyzer,
+  ReportNarrativeGenerator,
+  ReportRecommendationAI
+} from "@/types/activity-reports";
+export type {
+  InspectionAIAnalyzer,
+  InspectionChecklist,
+  InspectionEvidence,
+  InspectionGap,
+  InspectionPackage,
+  InspectionPackageItem,
+  InspectionPackageSection,
+  InspectionReadiness,
+  InspectionReadinessAI,
+  InspectionRecommendation,
+  InspectionRecommendationAI,
+  InspectionRequirement,
+  InspectionRequirementStatus,
+  InspectionRisk,
+  InspectionRiskLevel,
+  InspectionScenario,
+  InspectionScenarioId
+} from "@/types/inspection-center";
 export type { EducationModule } from "@/types/modules";
 export type {
   DocumentAnalysisPayload,
@@ -77,6 +115,19 @@ export type {
   SchoolInfrastructureObject
 } from "@/types/educational-system";
 export type { EventStatus, SchoolEvent } from "@/types/events";
+export type {
+  EventExecution,
+  EventExecutionComment,
+  EventExecutionEvidence,
+  EventExecutionEvidenceType,
+  EventExecutionHistory,
+  EventExecutionProgress,
+  EventExecutionReminder,
+  EventExecutionRisk,
+  EventExecutionRiskLevel,
+  EventExecutionStatistics,
+  EventExecutionStatus
+} from "@/types/event-execution";
 export type { ExportDocument } from "@/types/exports";
 export type { ExtraActivity, ExtraActivityStatus, ExtraActivityType } from "@/types/extra-activities";
 export type {

@@ -1,5 +1,6 @@
 import { mockAppState } from "@/data/mock-data";
 import { migrateEventDirectionRelations, standardActivityDirections } from "@/lib/domain/activity-directions";
+import { migrateEventExecutions } from "@/lib/domain/event-execution";
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
 import { findModuleIdByTitle } from "@/lib/domain/modules";
 import type {
@@ -104,6 +105,7 @@ function migrateState(state: Partial<AppState>): AppState {
       migratedState.activityDirections,
       state.eventDirectionRelations
     ),
+    eventExecutions: migrateEventExecutions(migratedState.events, state.eventExecutions),
     workProgram: isCurrentWorkProgram(state.workProgram)
       ? state.workProgram
       : createEmptyWorkProgram(migratedState as AppState)

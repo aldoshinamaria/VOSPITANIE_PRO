@@ -2,6 +2,7 @@ import type { EducationModule } from "@/types/modules";
 import type { ActivityDirection, EventDirectionRelation } from "@/types/activity-directions";
 import type { DocumentProcessingLogEntry, DocumentProcessingRecord } from "@/types/document-processing";
 import type { EducationalSystem } from "@/types/educational-system";
+import type { EventExecution } from "@/types/event-execution";
 import type { ExportDocument } from "@/types/exports";
 import type { ExtraActivity } from "@/types/extra-activities";
 import type { ExtractedEvent, ImportedDocument } from "@/types/imported-documents";
@@ -17,6 +18,7 @@ export interface AppState {
   educationModules: EducationModule[];
   activityDirections: ActivityDirection[];
   eventDirectionRelations: EventDirectionRelation[];
+  eventExecutions: EventExecution[];
   events: SchoolEvent[];
   kpvr: KpvrItem[];
   extraActivities: ExtraActivity[];

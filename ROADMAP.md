@@ -868,3 +868,148 @@ Next steps:
 - [ ] Add export of matrix and risk report to DOCX/PDF.
 - [ ] Connect balance risks to `/activity-plans` and `/events` with deep links.
 - [ ] Add tests for matrix calculations on empty and overloaded datasets.
+
+## Stage 17.4: Analytics Center and School Reporting Engine
+
+Current stage: added a unified reporting engine for the deputy director without creating separate report entities for DDTT, prevention, museum, volunteer work or parent work.
+
+Done:
+
+- [x] Added `activity-reports` domain.
+- [x] Added route `/activity-reports`.
+- [x] Added menu item "Отчеты".
+- [x] Added entities: `ActivityReport`, `ActivityReportTemplate`, `ActivityReportSection`, `ActivityReportProjection`, `ActivityReportStatistics`, `ActivityReportFilter`, `ActivityReportExportOptions`, `ActivityReportInsight`, `ActivityReportRisk`, `ActivityReportRecommendation`.
+- [x] Added services: `ActivityReportBuilder`, `ActivityReportAnalyzer`, `ActivityReportStatisticsService`, `ActivityReportExporter`, `ActivityReportRecommendationEngine`, `ActivityReportRiskAnalyzer`.
+- [x] Added AI-ready contracts: `ReportAIAnalyzer`, `ReportNarrativeGenerator`, `ReportRecommendationAI`.
+- [x] Added reporting modes: month, quarter, half-year, academic year and custom period.
+- [x] Added automatic report generation for all directions through one `directionId` filter.
+- [x] Added KPI block: total events, completed, cancelled, overdue, class coverage, student coverage, direction coverage, plan completion, average events per class and average events per direction.
+- [x] Added rule-based insights, risks and recommendations.
+- [x] Added deputy-director dashboard block: done, not done, risks, recommendations and report event tables.
+- [x] Added DOCX export.
+- [x] Added PDF flow through browser print.
+- [x] Kept reports as projections over `SchoolEvent`, `EventDirectionRelation`, `ActivityPlanBuilder` and `ActivityMatrixAnalyzer`; no event copies are stored.
+- [x] `npm.cmd run test` passes.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+- [x] Smoke checks for `/activity-reports`, `/activity-plans`, `/activity-matrix`, `/events`, `/kpvr`, `/work-program` and `/compliance-check` return HTTP 200 without application error.
+
+Architectural decisions:
+
+- `ActivityReportBuilder` composes existing plan and matrix engines instead of reimplementing their logic.
+- Report sections split completed and not-completed events without creating new event records.
+- Risk and recommendation logic is deterministic and transparent, ready for later AI explanation layers.
+- AI contracts are declared but not implemented, preserving the no-LLM rule for this stage.
+
+Next steps:
+
+- [ ] Add unit tests for `ActivityReportBuilder` and `ActivityReportRiskAnalyzer`.
+- [ ] Add deep links from report risks to `/events`, `/activity-plans` and `/activity-matrix`.
+- [ ] Add saved report presets for common administrative reports.
+- [ ] Add comparison with previous period after historical snapshots are introduced.
+
+## Stage 17.5: Event Execution Control System
+
+Current stage: added a lifecycle control layer for events without copying events into reporting-specific entities.
+
+Done:
+
+- [x] Added `event-execution` domain.
+- [x] Added route `/event-execution`.
+- [x] Added menu item "Контроль исполнения".
+- [x] Added entities: `EventExecution`, `EventExecutionStatus`, `EventExecutionProgress`, `EventExecutionEvidence`, `EventExecutionComment`, `EventExecutionHistory`, `EventExecutionReminder`, `EventExecutionRisk`.
+- [x] Added lifecycle statuses: draft, planned, assigned, in progress, completed, confirmed, included in reporting, cancelled, overdue.
+- [x] Added execution migration from existing `SchoolEvent` status and dates.
+- [x] Added execution persistence in `AppState`; Supabase compatibility is preserved through the existing JSON state payload.
+- [x] Added execution dashboard: total, planned, in work, completed, confirmed, overdue, cancelled.
+- [x] Added filters by status, month, activity direction, responsible person, education level and class.
+- [x] Added event execution card with status, progress, actual date, responsible people, comments, evidence links, risks and history.
+- [x] Added evidence architecture for photos, orders, reports, links and files; current UI supports link metadata without file storage.
+- [x] Added `EventExecutionRiskAnalyzer`.
+- [x] Added risks: overdue event, no responsible person, no confirmation, no results, no evidence.
+- [x] Added execution KPI: completion percent, confirmed percent, overdue percent and percent without responsible.
+- [x] Updated activity reports to use execution data for completion, overdue and confirmation KPI.
+- [x] Added tests for execution migration, status update, statistics and risk detection.
+- [x] `npm.cmd run test` passes.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+- [x] Smoke checks for `/event-execution`, `/activity-reports`, `/activity-plans`, `/activity-matrix`, `/events`, `/kpvr`, `/work-program` and `/compliance-check` return HTTP 200 without application error.
+
+Architectural decisions:
+
+- `SchoolEvent` remains the only event card; `EventExecution` is a normalized lifecycle record keyed by `eventId`.
+- Execution status synchronizes back to the existing event status for compatibility with KPVR, plans, matrix and reports.
+- Evidence is metadata-only at this stage; file storage can later be connected without changing the execution card contract.
+- Reminders are modeled but not sent; notification delivery can be added later through the same entity.
+
+Next steps:
+
+- [ ] Add Supabase table `event_executions` or explicit JSON column migration for production persistence.
+- [ ] Add file storage for execution evidence.
+- [ ] Add reminder delivery through email, Telegram or in-app notifications.
+- [ ] Add deep links from report and matrix risks to execution cards.
+
+## Stage 17.6: Inspection Center and Document Packages
+
+Current stage: added a school inspection preparation center that builds readiness, gaps, risks, checklists and document packages from existing events, execution, plans, reports and analytics.
+
+Done:
+
+- [x] Added `inspection-center` domain.
+- [x] Added routes `/inspection-center` and `/document-packages`.
+- [x] Added menu items "Центр проверок" and "Пакеты документов".
+- [x] Added entities: `InspectionScenario`, `InspectionRequirement`, `InspectionReadiness`, `InspectionPackage`, `InspectionPackageSection`, `InspectionPackageItem`, `InspectionChecklist`, `InspectionGap`, `InspectionRisk`, `InspectionRecommendation`, `InspectionEvidence`.
+- [x] Added services: `InspectionCenter`, `InspectionPackageBuilder`, `InspectionReadinessAnalyzer`, `InspectionGapAnalyzer`, `InspectionChecklistBuilder`, `InspectionRiskAnalyzer`, `InspectionExporter`.
+- [x] Added AI-ready contracts: `InspectionAIAnalyzer`, `InspectionRecommendationAI`, `InspectionReadinessAI`.
+- [x] Added predefined scenarios: school self-audit, DDTT, offense prevention, school museum, Movement of the First, volunteer team, parent work, internal deputy-director control and municipal monitoring.
+- [x] Added readiness score from 0 to 100.
+- [x] Added quality checks for plans, reports, confirmed events, KPVR, work program, matrix balance and normative base.
+- [x] Added source tracing for package items and evidence.
+- [x] Added automatic checklist: ready, needs work and missing.
+- [x] Added gap analysis and prioritized recommendations.
+- [x] Added DOCX export for inspection packages.
+- [x] Added PDF flow through browser print.
+- [x] Added tests for empty school readiness, demo package generation and all predefined scenarios.
+- [x] `npm.cmd run test` passes.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+- [x] Smoke checks for `/inspection-center`, `/document-packages`, `/event-execution`, `/activity-reports`, `/activity-plans`, `/activity-matrix`, `/kpvr`, `/work-program` and `/compliance-check` return HTTP 200 without application error.
+
+Architectural decisions:
+
+- Inspection packages are projections, not copied documents.
+- `InspectionPackageBuilder` composes existing plan, report, matrix, execution and compliance services.
+- Source tracing is part of `InspectionEvidence`, so every package item can show its origin.
+- AI contracts are declared only; rule-based logic remains the active implementation.
+
+Next steps:
+
+- [ ] Add deep links from every package item to the exact source page and filter.
+- [ ] Add saved inspection package snapshots after document versioning is introduced.
+- [ ] Add ZIP export when file storage is available.
+- [ ] Add school-specific thresholds for municipal monitoring scenarios.
+
+## Demo Distribution
+
+Current stage: added a public-demo entry point for social sharing and first product presentation.
+
+Done:
+
+- [x] Added route `/demo`.
+- [x] The route loads the realistic urban demo school automatically.
+- [x] The route gives fast links to the dashboard, KPVR, work program and inspection center.
+- [x] Local smoke checks for `/demo`, `/`, `/kpvr`, `/work-program` and `/inspection-center` return HTTP 200 without application error.
+- [x] `npm.cmd run test` passes.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+
+Architectural decisions:
+
+- Demo data is generated through the existing `DemoSchoolFactory`, not duplicated in the UI.
+- The public demo is stored in the visitor browser state when no Supabase environment is configured.
+- The demo route is isolated from production data entry routes and can be used as a share target after deployment.
+
+Next steps:
+
+- [ ] Deploy `/demo` to Vercel after refreshing the Vercel account token.
+- [ ] Add a branded public landing header if social traffic grows.

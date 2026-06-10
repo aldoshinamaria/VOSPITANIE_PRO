@@ -1,5 +1,6 @@
 import { mockAppState } from "@/data/mock-data";
 import { migrateEventDirectionRelations, standardActivityDirections } from "@/lib/domain/activity-directions";
+import { migrateEventExecutions } from "@/lib/domain/event-execution";
 import type {
   EventInsert,
   EventRow,
@@ -142,6 +143,7 @@ class SupabaseAppRepository {
       educationModules: await this.listModules(school.id),
       activityDirections: standardActivityDirections,
       eventDirectionRelations: mockAppState.eventDirectionRelations,
+      eventExecutions: mockAppState.eventExecutions,
       events: await this.listEvents(school.id),
       kpvr: mockAppState.kpvr,
       extraActivities: await this.listExtraActivities(school.id),
@@ -618,7 +620,7 @@ class SupabaseAppRepository {
   async getWorkProgramState(
     schoolId: string,
     state: AppState
-  ): Promise<Pick<AppState, "workProgram" | "complianceCheckHistory" | "activityDirections" | "eventDirectionRelations">> {
+  ): Promise<Pick<AppState, "workProgram" | "complianceCheckHistory" | "activityDirections" | "eventDirectionRelations" | "eventExecutions">> {
     const { data, error } = await this.client
       .from("work_programs")
       .select("*")
@@ -629,7 +631,7 @@ class SupabaseAppRepository {
       throw toRepositoryError("Не удалось загрузить рабочую программу воспитания", error);
     }
 
-    const rawData = data?.data as (Partial<WorkProgram> & Pick<Partial<AppState>, "complianceCheckHistory" | "activityDirections" | "eventDirectionRelations">) | null;
+    const rawData = data?.data as (Partial<WorkProgram> & Pick<Partial<AppState>, "complianceCheckHistory" | "activityDirections" | "eventDirectionRelations" | "eventExecutions">) | null;
     const activityDirections = Array.isArray(rawData?.activityDirections) ? rawData.activityDirections : state.activityDirections;
 
     return {
@@ -640,6 +642,7 @@ class SupabaseAppRepository {
         activityDirections,
         rawData?.eventDirectionRelations
       ),
+      eventExecutions: migrateEventExecutions(state.events, rawData?.eventExecutions),
       complianceCheckHistory: Array.isArray(rawData?.complianceCheckHistory)
         ? rawData.complianceCheckHistory
         : mockAppState.complianceCheckHistory
@@ -661,6 +664,7 @@ class SupabaseAppRepository {
         ...state.workProgram,
         activityDirections: state.activityDirections,
         eventDirectionRelations: state.eventDirectionRelations,
+        eventExecutions: state.eventExecutions,
         complianceCheckHistory: state.complianceCheckHistory
       }
     });

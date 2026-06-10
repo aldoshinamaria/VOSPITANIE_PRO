@@ -18,7 +18,7 @@ const eslintConfig = [
     }
   },
   {
-    ignores: [".next/**", ".test-build/**", "node_modules/**", "next-env.d.ts", "tests/register-paths.cjs"]
+    ignores: [".next/**", ".test-build/**", "node_modules/**", "KONDITER_IRINA/**", "next-env.d.ts", "tests/register-paths.cjs"]
   }
 ];
 

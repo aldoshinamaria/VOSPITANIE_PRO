@@ -1,15 +1,19 @@
 import {
   BookOpenCheck,
   CalendarDays,
+  ClipboardCheck,
   ClipboardList,
   DatabaseZap,
   FileArchive,
   FileInput,
   Grid3X3,
   Home,
+  PackageCheck,
   Landmark,
   LibraryBig,
   ListChecks,
+  PieChart,
+  SearchCheck,
   Network,
   Rocket,
   Scale,
@@ -50,6 +54,11 @@ export const navItems = [
     icon: CalendarDays
   },
   {
+    title: "Контроль исполнения",
+    href: "/event-execution",
+    icon: ClipboardCheck
+  },
+  {
     title: "КПВР",
     href: "/kpvr",
     icon: ClipboardList
@@ -63,6 +72,21 @@ export const navItems = [
     title: "Матрица воспитательной деятельности",
     href: "/activity-matrix",
     icon: Grid3X3
+  },
+  {
+    title: "Отчеты",
+    href: "/activity-reports",
+    icon: PieChart
+  },
+  {
+    title: "Центр проверок",
+    href: "/inspection-center",
+    icon: SearchCheck
+  },
+  {
+    title: "Пакеты документов",
+    href: "/document-packages",
+    icon: PackageCheck
   },
   {
     title: "Рабочая программа воспитания",

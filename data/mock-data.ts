@@ -1,6 +1,7 @@
 import type { AppState } from "@/types/domain";
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
 import { migrateEventDirectionRelations, standardActivityDirections } from "@/lib/domain/activity-directions";
+import { migrateEventExecutions } from "@/lib/domain/event-execution";
 
 export const mockAppState: AppState = {
   schoolPassport: {
@@ -213,6 +214,9 @@ export const mockAppState: AppState = {
   ],
   get eventDirectionRelations() {
     return migrateEventDirectionRelations(this.events, this.activityDirections);
+  },
+  get eventExecutions() {
+    return migrateEventExecutions(this.events);
   },
   kpvr: [
     {
