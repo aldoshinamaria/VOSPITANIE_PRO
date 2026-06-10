@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { createSupabaseDataAccess } from "@/lib/data-access";
+import { createLocalStorageDataAccess, createSupabaseDataAccess } from "@/lib/data-access";
 import type { AppState } from "@/types/domain";
 
 interface AppContextValue {
@@ -18,7 +18,13 @@ interface AppContextValue {
 const AppContext = React.createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children, initialState }: { children: React.ReactNode; initialState: AppState }) {
-  const dataAccess = React.useMemo(() => createSupabaseDataAccess(), []);
+  const dataAccess = React.useMemo(() => {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      return createSupabaseDataAccess();
+    }
+
+    return createLocalStorageDataAccess();
+  }, []);
   const [state, setState] = React.useState<AppState>(initialState);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
