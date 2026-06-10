@@ -1,5 +1,6 @@
 import type { AppState } from "@/types/domain";
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
+import { migrateEventDirectionRelations, standardActivityDirections } from "@/lib/domain/activity-directions";
 
 export const mockAppState: AppState = {
   schoolPassport: {
@@ -145,6 +146,9 @@ export const mockAppState: AppState = {
       active: true
     }
   ],
+  get activityDirections() {
+    return standardActivityDirections;
+  },
   events: [
     {
       id: "event-1",
@@ -207,6 +211,9 @@ export const mockAppState: AppState = {
       priority: "medium"
     }
   ],
+  get eventDirectionRelations() {
+    return migrateEventDirectionRelations(this.events, this.activityDirections);
+  },
   kpvr: [
     {
       id: "kpvr-1",
@@ -342,6 +349,7 @@ export const mockAppState: AppState = {
   get workProgram() {
     return createEmptyWorkProgram(this as AppState);
   },
+  complianceCheckHistory: [],
   exportDocuments: [
     {
       id: "export-1",

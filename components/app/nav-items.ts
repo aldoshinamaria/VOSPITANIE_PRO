@@ -5,13 +5,17 @@ import {
   DatabaseZap,
   FileArchive,
   FileInput,
+  Grid3X3,
   Home,
   Landmark,
   LibraryBig,
+  ListChecks,
   Network,
+  Rocket,
   Scale,
   School,
-  ScrollText
+  ScrollText,
+  ShieldCheck
 } from "lucide-react";
 
 export const navItems = [
@@ -19,6 +23,11 @@ export const navItems = [
     title: "Главная",
     href: "/",
     icon: Home
+  },
+  {
+    title: "Подготовка к запуску",
+    href: "/launch-readiness",
+    icon: Rocket
   },
   {
     title: "Паспорт школы",
@@ -46,14 +55,14 @@ export const navItems = [
     icon: ClipboardList
   },
   {
-    title: "Документный движок",
-    href: "/document-processing",
-    icon: DatabaseZap
+    title: "Планы деятельности",
+    href: "/activity-plans",
+    icon: ListChecks
   },
   {
-    title: "Федеральная база знаний",
-    href: "/federal-knowledge",
-    icon: LibraryBig
+    title: "Матрица воспитательной деятельности",
+    href: "/activity-matrix",
+    icon: Grid3X3
   },
   {
     title: "Рабочая программа воспитания",
@@ -61,9 +70,19 @@ export const navItems = [
     icon: ScrollText
   },
   {
+    title: "Проверка соответствия",
+    href: "/compliance-check",
+    icon: ShieldCheck
+  },
+  {
     title: "Нормативные документы",
     href: "/normative-documents",
     icon: Scale
+  },
+  {
+    title: "Федеральная база знаний",
+    href: "/federal-knowledge",
+    icon: LibraryBig
   },
   {
     title: "Внеурочная деятельность",
@@ -71,13 +90,18 @@ export const navItems = [
     icon: Landmark
   },
   {
-    title: "Экспорт документов",
-    href: "/exports",
-    icon: FileArchive
-  },
-  {
     title: "Импорт документов",
     href: "/import-documents",
     icon: FileInput
+  },
+  {
+    title: "Документный движок",
+    href: "/document-processing",
+    icon: DatabaseZap
+  },
+  {
+    title: "Экспорт документов",
+    href: "/exports",
+    icon: FileArchive
   }
 ] as const;

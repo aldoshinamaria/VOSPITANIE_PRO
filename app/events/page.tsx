@@ -14,6 +14,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
+  buildDirectionStatistics,
+  createCustomActivityDirection,
+  getDirectionsForEvent,
+  inferDirectionIdsFromText,
+  replaceEventDirectionRelations
+} from "@/lib/domain/activity-directions";
+import {
   findAssociationById,
   findEducationalSystemPartnerById,
   findInfrastructureObjectById
@@ -33,6 +40,7 @@ interface EventForm {
   description: string;
   moduleId: string;
   direction: string;
+  directionIds: string[];
   educationLevels: EducationLevel[];
   classes: string;
   startDate: string;
@@ -53,6 +61,7 @@ interface EventForm {
 type EventErrors = Partial<Record<keyof EventForm, string>>;
 type StatusFilter = "all" | EventStatus;
 type LevelFilter = "all" | EducationLevel;
+type DirectionFilter = "all" | string;
 type CompetitionLevel = "school" | "municipal" | "regional" | "federal";
 
 interface CompetitionForm {
@@ -87,6 +96,7 @@ const emptyForm: EventForm = {
   description: "",
   moduleId: DEFAULT_MODULE_ID,
   direction: "",
+  directionIds: [],
   educationLevels: ["ooo"],
   classes: "",
   startDate: "",
@@ -126,6 +136,8 @@ export default function EventsPage() {
   const [levelFilter, setLevelFilter] = React.useState<LevelFilter>("all");
   const [monthFilter, setMonthFilter] = React.useState("all");
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("all");
+  const [directionFilter, setDirectionFilter] = React.useState<DirectionFilter>("all");
+  const [newDirectionTitle, setNewDirectionTitle] = React.useState("");
   const [competitionOpen, setCompetitionOpen] = React.useState(false);
   const [competitionForm, setCompetitionForm] = React.useState<CompetitionForm>(emptyCompetitionForm);
   const [competitionErrors, setCompetitionErrors] = React.useState<CompetitionErrors>({});
@@ -133,6 +145,8 @@ export default function EventsPage() {
   const [savedMessage, setSavedMessage] = React.useState<string | null>(null);
 
   const activeModules = state.educationModules.filter((educationModule) => educationModule.active);
+  const activeDirections = state.activityDirections.filter((direction) => direction.active);
+  const directionStatistics = buildDirectionStatistics(state.activityDirections, state.eventDirectionRelations, state.events);
   const educationalSystem = state.educationalSystem;
   const derivedMonth = form.startDate ? getMonthFromDate(form.startDate) : null;
   const filteredEvents = state.events.filter((event) => {
@@ -140,8 +154,11 @@ export default function EventsPage() {
     const matchesLevel = levelFilter === "all" || event.educationLevels.includes(levelFilter);
     const matchesMonth = monthFilter === "all" || event.month === Number(monthFilter);
     const matchesStatus = statusFilter === "all" || event.status === statusFilter;
+    const matchesDirection =
+      directionFilter === "all" ||
+      state.eventDirectionRelations.some((relation) => relation.eventId === event.id && relation.directionId === directionFilter);
 
-    return matchesModule && matchesLevel && matchesMonth && matchesStatus;
+    return matchesModule && matchesLevel && matchesMonth && matchesStatus && matchesDirection;
   });
 
   function setField<TField extends keyof EventForm>(field: TField, value: EventForm[TField]) {
@@ -171,6 +188,50 @@ export default function EventsPage() {
     });
   }
 
+  function toggleActivityDirection(directionId: string) {
+    setForm((current) => {
+      const exists = current.directionIds.includes(directionId);
+
+      return {
+        ...current,
+        directionIds: exists
+          ? current.directionIds.filter((item) => item !== directionId)
+          : [...current.directionIds, directionId]
+      };
+    });
+  }
+
+  async function addCustomDirection() {
+    const title = newDirectionTitle.trim();
+
+    if (!title) {
+      return;
+    }
+
+    const existing = state.activityDirections.find((direction) => direction.title.toLowerCase() === title.toLowerCase());
+
+    if (existing) {
+      setForm((current) => ({
+        ...current,
+        directionIds: current.directionIds.includes(existing.id) ? current.directionIds : [...current.directionIds, existing.id]
+      }));
+      setNewDirectionTitle("");
+      return;
+    }
+
+    const direction = createCustomActivityDirection(title);
+
+    await updateState((current) => ({
+      ...current,
+      activityDirections: [...current.activityDirections, direction]
+    }));
+    setForm((current) => ({
+      ...current,
+      directionIds: [...current.directionIds, direction.id]
+    }));
+    setNewDirectionTitle("");
+  }
+
   async function saveEvent() {
     const nextErrors = validateEvent(form, activeModules.length > 0);
     setErrors(nextErrors);
@@ -179,12 +240,13 @@ export default function EventsPage() {
       return;
     }
 
+    const selectedDirections = activeDirections.filter((direction) => form.directionIds.includes(direction.id));
     const eventPayload: SchoolEvent = {
       id: editingId ?? createId("event"),
       title: form.title.trim(),
       description: form.description.trim(),
       moduleId: form.moduleId,
-      direction: form.direction.trim(),
+      direction: form.direction.trim() || selectedDirections.map((direction) => direction.title).join(", "),
       educationLevels: form.educationLevels,
       classes: form.classes.trim(),
       startDate: form.startDate,
@@ -208,7 +270,12 @@ export default function EventsPage() {
         ...current,
         events: editingId
           ? current.events.map((event) => (event.id === editingId ? eventPayload : event))
-          : [...current.events, eventPayload]
+          : [...current.events, eventPayload],
+        eventDirectionRelations: replaceEventDirectionRelations(
+          current.eventDirectionRelations,
+          eventPayload.id,
+          form.directionIds
+        )
       }));
     } catch {
       setSavedMessage(null);
@@ -226,6 +293,9 @@ export default function EventsPage() {
       description: event.description,
       moduleId: event.moduleId,
       direction: event.direction,
+      directionIds: state.eventDirectionRelations
+        .filter((relation) => relation.eventId === event.id)
+        .map((relation) => relation.directionId),
       educationLevels: event.educationLevels,
       classes: event.classes,
       startDate: event.startDate,
@@ -256,7 +326,8 @@ export default function EventsPage() {
     try {
       await updateState((current) => ({
         ...current,
-        events: current.events.filter((item) => item.id !== event.id)
+        events: current.events.filter((item) => item.id !== event.id),
+        eventDirectionRelations: current.eventDirectionRelations.filter((relation) => relation.eventId !== event.id)
       }));
     } catch {
       return;
@@ -278,6 +349,7 @@ export default function EventsPage() {
     setLevelFilter("all");
     setMonthFilter("all");
     setStatusFilter("all");
+    setDirectionFilter("all");
   }
 
   function prepareCompetition() {
@@ -326,10 +398,26 @@ export default function EventsPage() {
       return;
     }
 
+    const inferredDirectionIds = inferDirectionIdsFromText(
+      [
+        competitionConfirmation.event.title,
+        competitionConfirmation.event.description,
+        competitionConfirmation.event.direction,
+        competitionConfirmation.event.partner
+      ].join(" "),
+      activeDirections
+    );
+    const fallbackDirectionIds = activeDirections[0]?.id ? [activeDirections[0].id] : [];
+
     try {
       await updateState((current) => ({
         ...current,
-        events: [...current.events, competitionConfirmation.event]
+        events: [...current.events, competitionConfirmation.event],
+        eventDirectionRelations: replaceEventDirectionRelations(
+          current.eventDirectionRelations,
+          competitionConfirmation.event.id,
+          inferredDirectionIds.length > 0 ? inferredDirectionIds : fallbackDirectionIds
+        )
       }));
     } catch {
       setSavedMessage(null);
@@ -530,6 +618,35 @@ export default function EventsPage() {
               required
               onChange={(event) => setField("direction", event.target.value)}
             />
+            <div className="grid gap-2 text-sm font-medium xl:col-span-3">
+              <FieldLabel label="Направления деятельности" required />
+              <div className="flex flex-wrap gap-2">
+                {activeDirections.map((direction) => (
+                  <label key={direction.id} className="flex items-center gap-2 rounded-md border bg-white px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={form.directionIds.includes(direction.id)}
+                      onChange={() => toggleActivityDirection(direction.id)}
+                      className="h-4 w-4 rounded border-slate-300 accent-sky-800"
+                    />
+                    {direction.title}
+                  </label>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2 md:flex-row">
+                <input
+                  className="h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={newDirectionTitle}
+                  placeholder="Добавить свое направление"
+                  onChange={(event) => setNewDirectionTitle(event.target.value)}
+                />
+                <Button type="button" variant="outline" onClick={addCustomDirection}>
+                  <Plus className="h-4 w-4" />
+                  Добавить направление
+                </Button>
+              </div>
+              <FieldError error={errors.directionIds} />
+            </div>
             <TextareaField
               className="xl:col-span-3"
               label="Описание"
@@ -696,12 +813,20 @@ export default function EventsPage() {
                   Показано {filteredEvents.length} из {state.events.length}. События с уровнем ООО автоматически входят в план ООО.
                 </CardDescription>
               </div>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[220px_140px_150px_170px_auto]">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[220px_180px_140px_150px_170px_auto]">
                 <Select value={moduleFilter} onChange={(event) => setModuleFilter(event.target.value)}>
                   <option value="all">Все модули</option>
                   {state.educationModules.map((educationModule) => (
                     <option key={educationModule.id} value={educationModule.id}>
                       {educationModule.title}
+                    </option>
+                  ))}
+                </Select>
+                <Select value={directionFilter} onChange={(event) => setDirectionFilter(event.target.value)}>
+                  <option value="all">Все направления</option>
+                  {activeDirections.map((direction) => (
+                    <option key={direction.id} value={direction.id}>
+                      {direction.title}
                     </option>
                   ))}
                 </Select>
@@ -733,6 +858,35 @@ export default function EventsPage() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
+            {directionStatistics.length > 0 ? (
+              <div className="border-b p-4">
+                <div className="mb-3 flex flex-col gap-1">
+                  <div className="text-sm font-semibold">Распределение по направлениям деятельности</div>
+                  <div className="text-xs text-muted-foreground">
+                    Одно мероприятие может входить сразу в несколько направлений без дублирования карточки.
+                  </div>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                  {directionStatistics.slice(0, 8).map((statistic) => (
+                    <button
+                      key={statistic.directionId}
+                      type="button"
+                      onClick={() => setDirectionFilter(statistic.directionId)}
+                      className="rounded-md border bg-white p-3 text-left transition hover:border-sky-700 hover:bg-sky-50"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="text-sm font-medium">{statistic.title}</div>
+                        <Badge variant="secondary">{statistic.eventsCount}</Badge>
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        Уровни:{" "}
+                        {statistic.byEducationLevel.map((item) => educationLevelLabels[item.level]).join(", ") || "нет данных"}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {filteredEvents.length === 0 ? (
               <div className="p-5">
                 <EmptyState
@@ -767,6 +921,11 @@ export default function EventsPage() {
                       educationalSystem.partners,
                       event.systemPartnerId
                     );
+                    const eventDirections = getDirectionsForEvent(
+                      event.id,
+                      state.activityDirections,
+                      state.eventDirectionRelations
+                    );
 
                     return (
                       <TableRow key={event.id}>
@@ -786,6 +945,15 @@ export default function EventsPage() {
                         <TableCell className="min-w-56">
                           <div className="font-medium">{educationModule?.title ?? "Модуль не выбран"}</div>
                           <div className="text-xs text-muted-foreground">{event.direction}</div>
+                          {eventDirections.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {eventDirections.map((direction) => (
+                                <Badge key={direction.id} variant="secondary">
+                                  {direction.title}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : null}
                           {linkedAssociation || linkedInfrastructure || linkedPartner ? (
                             <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
                               {linkedAssociation ? <div>Объединение: {linkedAssociation.title}</div> : null}
@@ -857,6 +1025,10 @@ function validateEvent(form: EventForm, hasActiveModules: boolean) {
 
   if (!form.direction.trim()) {
     nextErrors.direction = "Направление обязательно";
+  }
+
+  if (form.directionIds.length === 0) {
+    nextErrors.directionIds = "Выберите хотя бы одно направление деятельности";
   }
 
   if (form.educationLevels.length === 0) {

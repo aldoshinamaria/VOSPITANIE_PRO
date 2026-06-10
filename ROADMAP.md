@@ -600,3 +600,271 @@ Next steps:
 - [ ] Add a checker that maps `FederalProgramSection` criteria to generated `WorkProgram` sections.
 - [ ] Add target-result coverage report by education level and direction.
 - [ ] Connect confirmed normative requirements from the Normative Center to the federal knowledge checks.
+
+## Stage 16.2: Work Program Compliance Checker
+
+Current stage: added a rule-based checker that validates the existing `work-program` domain against the federal knowledge base.
+
+Done:
+
+- [x] Added `WorkProgramComplianceChecker` service in `lib/domain/federal-knowledge`.
+- [x] Added compliance types: `ComplianceCheck`, `ComplianceIssue`, `ComplianceRecommendation`, `ComplianceSeverity`, `ComplianceStatus`.
+- [x] Added section, direction and target-result coverage models.
+- [x] Implemented checks for mandatory sections, section completeness, eight upbringing directions, target results, KPVR linkage and educational-system linkage.
+- [x] Checker works with empty, partial and missing input data without UI dependencies.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+
+Architectural decisions:
+
+- The checker consumes the existing `WorkProgram`; no duplicate work-program module is introduced.
+- Federal knowledge remains a read-only reference domain.
+- Every issue carries severity, location, rationale, source requirement and recommendation.
+- The checker is rule-based and can later be wrapped by AI-assisted analyzers without changing UI contracts.
+
+Next steps:
+
+- [ ] Add a UI report for compliance results in the work-program or federal-knowledge section.
+- [ ] Add unit tests for empty, partial and complete work-program scenarios.
+- [ ] Connect the checker to Normative Center recommendations.
+
+## Stage 16.3: Compliance Check Screen
+
+Current stage: added a user-facing compliance-check screen that consumes `WorkProgramComplianceChecker` without duplicating rule logic in UI.
+
+Done:
+
+- [x] Added page `/compliance-check`.
+- [x] Added menu item "Проверка соответствия".
+- [x] Displayed overall compliance percent and human-readable status.
+- [x] Added check blocks for mandatory sections, upbringing directions, target results, KPVR linkage and educational-system reflection.
+- [x] Added issue list with severity, location, source requirement and recommendation.
+- [x] Added filters for all, high, medium and low severity issues.
+- [x] Added actions: recheck, open work program, open KPVR, copy recommendations.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+- [x] Smoke check of `/compliance-check` returns HTTP 200 without application error.
+
+Architectural decisions:
+
+- UI does not perform compliance rules; it only renders `ComplianceCheck`.
+- Recommendations are copied from checker output, not regenerated on the client.
+- Navigation actions use existing routes `/work-program` and `/kpvr`.
+- The screen is ready to receive future AI-assisted checker output through the same `ComplianceCheck` contract.
+
+Next steps:
+
+- [ ] Add persistent check history.
+- [ ] Add deep links from issues to exact work-program subsections.
+- [ ] Add automated tests for filters and recommendation copying.
+
+## Stage 16.4: Production Compliance Check Hardening
+
+Current stage: hardened the federal compliance-check module for first user demos and internal QA.
+
+Done:
+
+- [x] Added unit tests for `WorkProgramComplianceChecker`.
+- [x] Covered empty, partial and complete work-program scenarios.
+- [x] Covered missing upbringing directions, KPVR linkage, educational-system reflection, target results and appendices.
+- [x] Added `ComplianceCheckHistory` and saved check snapshots in `AppState`.
+- [x] Added check history block with score, issue counts and score delta.
+- [x] Added deep-link target fields to every compliance issue.
+- [x] Added "Go to fix" actions for issues and priority actions.
+- [x] Added appendices checks: KPVR, extracurricular plan, modules, partners and educational system.
+- [x] Added normative actuality checks for federal work program, federal calendar plan, outdated documents and documents needing review.
+- [x] Added priority actions and short fix plan with copy action.
+- [x] `npm.cmd run test` passes.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+- [x] Smoke checks for `/compliance-check`, `/work-program` and `/kpvr` return HTTP 200 without application error.
+
+Architectural decisions:
+
+- UI still renders checker output only; compliance rules remain inside `WorkProgramComplianceChecker`.
+- Compliance history is stored in the common state and persisted with the work-program JSON payload in the Supabase data layer.
+- Deep links are part of `ComplianceIssue`, so future AI checkers can provide the same navigation contract.
+- Tests use the built-in TypeScript compiler and Node runtime to avoid adding test dependencies.
+
+Next steps:
+
+- [ ] Add browser-level tests for filters, copy actions and deep-link navigation.
+- [ ] Add exact subsection anchors inside `/work-program`.
+- [ ] Add AI-assisted explanation layer after policy and provider selection.
+
+## Stage 16.5: Pilot Readiness
+
+Current stage: prepared the product for a first real-school pilot without adding new large modules, AI analyzers, chats or generators.
+
+Done:
+
+- [x] Added `SchoolReadinessChecker`.
+- [x] Added page `/launch-readiness`.
+- [x] Added menu item "Подготовка к запуску".
+- [x] Added readiness checks for school passport, educational system, KPVR, work program and normative base.
+- [x] Added filled/not-filled lists and blockers that prevent document generation.
+- [x] Fixed main navigation labels so pilot users do not see broken Cyrillic in the sidebar.
+- [x] Audited the core user path: school passport, educational system, events, KPVR, work program, normative center and compliance check.
+- [x] `npm.cmd run test` passes.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+- [x] Smoke checks for `/launch-readiness`, `/school-passport`, `/educational-system`, `/events`, `/kpvr`, `/work-program`, `/normative-documents` and `/compliance-check` return HTTP 200 without application error.
+
+Architectural decisions:
+
+- Launch readiness is a domain service, not page-level logic.
+- The readiness page consumes `SchoolReadinessCheck` only and links users to existing sections.
+- No new large product module was introduced; the page is a pilot-control view over existing data.
+- The checker is intentionally rule-based and can later consume richer compliance, normative and document-processing signals.
+
+Next steps before school pilot:
+
+- [ ] Add seeded demo data for a realistic school case.
+- [ ] Add field-level anchors for direct fixes from readiness and compliance screens.
+- [ ] Add short onboarding checklist for the deputy director workflow.
+
+## Stage 16.6: First Launch Wizard and Demo School
+
+Current stage: improved the first five minutes of the product without adding large new modules, AI analyzers, chat or generators.
+
+Done:
+
+- [x] Added `DemoSchoolFactory`.
+- [x] Added a first-launch wizard to the dashboard.
+- [x] Added "Create your school" flow through an empty school state.
+- [x] Added "Load demo school" flow.
+- [x] Added "Reset demo data" action.
+- [x] Added quick templates: urban school, rural school, cadet school and volunteer-focused school.
+- [x] Added realistic demo data: school passport, educational system, volunteer team, museum, partners, events, KPVR, extracurricular programs, work program and normative documents.
+- [x] Added first-use hints: what to fill first, what KPVR needs and what the work program needs.
+- [x] Reworked the dashboard into a 5-minute demo route.
+- [x] `npm.cmd run test` passes.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+- [x] Fresh dev-server smoke checks for `/`, `/launch-readiness`, `/kpvr`, `/work-program` and `/compliance-check` return HTTP 200 without application error.
+
+Architectural decisions:
+
+- Demo data generation is isolated in `DemoSchoolFactory`.
+- The wizard updates the existing `AppState`; no new large module or storage layer was introduced.
+- Demo work program is assembled by the existing `WorkProgramAssembler`.
+- Readiness and compliance screens consume the same state as real schools, so the demo exercises the real product flow.
+
+Next steps before school demonstration:
+
+- [ ] Add a visible "demo mode" badge when a demo template is loaded.
+- [ ] Add field-level anchors for the most common first-launch fixes.
+- [ ] Add browser-level test for loading a demo template and opening KPVR/work-program.
+
+## Stage 17.1: Unified School Planning Core
+
+Current stage: created the normalized activity-direction foundation for future school plans without adding separate prevention, DDTT, museum, volunteer or parent-work plan modules.
+
+Done:
+
+- [x] Added `activity-directions` domain.
+- [x] Added entities: `ActivityDirection`, `ActivityDirectionGroup`, `ActivityDirectionCategory`, `EventDirectionRelation`, `DirectionStatistics`.
+- [x] Added the standard expandable direction catalog with prevention, DDTT, safety, upbringing, communities, school resources and support directions.
+- [x] Added user-created custom activity directions.
+- [x] Added normalized many-to-many relation between events and activity directions.
+- [x] Migrated existing events into direction relations from their current text direction, title and description.
+- [x] Added activity-direction data to `AppState`, localStorage migration, Supabase state persistence and demo-school generation.
+- [x] Updated event card with multi-select direction choice, search-like filtering through the selector, and quick custom direction creation.
+- [x] Updated event registry with direction badges, direction filter and direction statistics.
+- [x] Kept KPVR, work program, extracurricular activities, educational system and compliance check compatible with the existing `SchoolEvent` contract.
+- [x] `npm.cmd run test` passes.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+- [x] Smoke checks for `/events`, `/kpvr`, `/work-program` and `/compliance-check` return HTTP 200 without application error on `localhost:3000`.
+
+Architectural decisions:
+
+- `SchoolEvent` remains the single source of the event card; direction membership is stored separately in `EventDirectionRelation`.
+- One event can belong to any number of activity directions, which prevents duplicate event records in future plans.
+- Direction statistics are generated from relations and events, not stored as mutable state.
+- Standard directions are seed data; custom directions are user data and remain compatible with future Supabase tables.
+- Future plan generators should consume `ActivityDirection` + `EventDirectionRelation` instead of filtering by free-text event fields.
+
+Next steps for Stage 17.2:
+
+- [x] Create read-only plan projections by activity direction.
+- [x] Add a universal plan builder instead of dedicated plan entities.
+- [x] Add route-level view for generated plan projections.
+- [ ] Add browser-level tests for selecting multiple directions and filtering the registry.
+
+## Stage 17.2: Universal School Activity Plan Engine
+
+Current stage: created a universal plan engine that builds school activity plans as projections over `SchoolEvent` and `EventDirectionRelation`.
+
+Done:
+
+- [x] Added activity-plan entities: `ActivityPlan`, `ActivityPlanTemplate`, `ActivityPlanSection`, `ActivityPlanProjection`, `ActivityPlanExportOptions`, `ActivityPlanStatistics`, `ActivityPlanFilter`.
+- [x] Added services: `ActivityPlanBuilder`, `ActivityPlanExporter`, `ActivityPlanStatisticsService`, `ActivityPlanFilterService`.
+- [x] Added extensible plan templates for all-school activity plan, prevention, DDTT, ЮИД, school museum, volunteer team, Movement of the First, self-government, parent work, career guidance and healthy lifestyle.
+- [x] Added grouping modes: by month, quarter, module, education level, responsible person, direction and no grouping.
+- [x] Added filters by education level, class, month, responsible person, status, activity direction and education module.
+- [x] Added page `/activity-plans`.
+- [x] Added menu item "Планы деятельности".
+- [x] Added direction list with event counts.
+- [x] Added plan preview with goal, tasks, sections and event table.
+- [x] Added analytics: total events, completion percent, completed events, overdue events, monthly counts and direction coverage.
+- [x] Added browser-side DOCX export for generated activity plans.
+- [x] Kept events as the only source of event data; no plan-specific event copies are created.
+- [x] `npm.cmd run test` passes.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+- [x] Smoke checks for `/activity-plans`, `/events`, `/kpvr`, `/work-program` and `/compliance-check` return HTTP 200 without application error.
+
+Architectural decisions:
+
+- A plan is a projection, not persisted duplicate data.
+- Direction membership is resolved through `EventDirectionRelation`.
+- `ActivityPlanTemplate` configures titles, goals and tasks; it does not create separate plan classes.
+- `ActivityPlanBuilder` owns plan assembly; UI renders only the returned `ActivityPlan`.
+- DOCX export consumes `ActivityPlan`, so future PDF/report exports can reuse the same projection.
+
+Next steps for Stage 17.3:
+
+- [x] Add a management matrix over directions and activity segments.
+- [x] Add risk analysis for empty directions, empty periods, overloads and missing coverage.
+- [x] Add a balance index for activity planning.
+- [ ] Add saved user presets for common plan templates.
+- [ ] Add print/PDF export over the same `ActivityPlan` contract.
+- [ ] Add browser tests for matrix cell drill-down and route-level filtering.
+
+## Stage 17.3: School Upbringing Activity Matrix
+
+Current stage: added a management matrix that helps the deputy director find gaps, overloads and coverage risks across the school activity system.
+
+Done:
+
+- [x] Added route `/activity-matrix`.
+- [x] Added menu item "Матрица воспитательной деятельности".
+- [x] Added entities: `ActivityMatrix`, `ActivityMatrixRow`, `ActivityMatrixColumn`, `ActivityMatrixCell`, `ActivityMatrixAnalysis`, `ActivityMatrixRisk`, `ActivityMatrixRecommendation`, `ActivityMatrixBalanceIndex`.
+- [x] Added `ActivityMatrixAnalyzer`.
+- [x] Built direction-by-month heat map.
+- [x] Added matrix modes: months, quarters, education levels, classes, responsible people and education modules.
+- [x] Added click-through cell drill-down with event list.
+- [x] Added risk detection: empty directions, weak directions, empty columns, overloaded columns, uncovered education levels and uncovered classes.
+- [x] Added balance index from 0 to 100 with statuses: excellent, good, needs attention and critical.
+- [x] Added top-10 recommendations.
+- [x] Added strong-zone summary for well-covered directions.
+- [x] Kept matrix calculations as projections over events and direction relations; no duplicate event storage is introduced.
+- [x] `npm.cmd run test` passes.
+- [x] `npm.cmd run lint` passes.
+- [x] `npm.cmd run build` passes.
+- [x] Smoke checks for `/activity-matrix`, `/activity-plans`, `/events`, `/kpvr`, `/work-program` and `/compliance-check` return HTTP 200 without application error.
+
+Architectural decisions:
+
+- `ActivityMatrixAnalyzer` is UI-independent and can feed future reports, readiness checks and AI recommendations.
+- The matrix reads `SchoolEvent`, `ActivityDirection`, `EventDirectionRelation` and education modules; it does not persist derived analytics.
+- Risk rules are deterministic and transparent, so deputy directors can understand why each recommendation appears.
+- Heat-map intensity is calculated from current matrix values, not from hard-coded thresholds.
+
+Next steps:
+
+- [ ] Add saved matrix views for deputy directors.
+- [ ] Add export of matrix and risk report to DOCX/PDF.
+- [ ] Connect balance risks to `/activity-plans` and `/events` with deep links.
+- [ ] Add tests for matrix calculations on empty and overloaded datasets.

@@ -1,4 +1,5 @@
 import { mockAppState } from "@/data/mock-data";
+import { migrateEventDirectionRelations, standardActivityDirections } from "@/lib/domain/activity-directions";
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
 import { findModuleIdByTitle } from "@/lib/domain/modules";
 import type {
@@ -67,6 +68,7 @@ function migrateState(state: Partial<AppState>): AppState {
     ...state,
     schoolPassport: migrateSchoolPassport(state.schoolPassport),
     educationModules: migrateEducationModules(state.educationModules),
+    activityDirections: migrateActivityDirections(state.activityDirections),
     events: Array.isArray(state.events) ? state.events.map(migrateEvent) : mockAppState.events,
     kpvr: Array.isArray(state.kpvr) ? state.kpvr.map(migrateKpvrItem) : mockAppState.kpvr,
     extraActivities: Array.isArray(state.extraActivities)
@@ -91,15 +93,32 @@ function migrateState(state: Partial<AppState>): AppState {
       ? state.documentProcessingLogs
       : mockAppState.documentProcessingLogs,
     workProgram: mockAppState.workProgram,
+    complianceCheckHistory: Array.isArray(state.complianceCheckHistory) ? state.complianceCheckHistory : mockAppState.complianceCheckHistory,
     exportDocuments: migrateExportDocuments(state.exportDocuments)
   };
 
   return {
     ...migratedState,
+    eventDirectionRelations: migrateEventDirectionRelations(
+      migratedState.events,
+      migratedState.activityDirections,
+      state.eventDirectionRelations
+    ),
     workProgram: isCurrentWorkProgram(state.workProgram)
       ? state.workProgram
       : createEmptyWorkProgram(migratedState as AppState)
   };
+}
+
+function migrateActivityDirections(directions?: AppState["activityDirections"]) {
+  if (!Array.isArray(directions) || directions.length === 0) {
+    return standardActivityDirections;
+  }
+
+  const existingIds = new Set(directions.map((direction) => direction.id));
+  const missingStandardDirections = standardActivityDirections.filter((direction) => !existingIds.has(direction.id));
+
+  return [...directions, ...missingStandardDirections];
 }
 
 function isCurrentWorkProgram(program?: Partial<WorkProgram>): program is WorkProgram {

@@ -1,5 +1,37 @@
 export type { ActivityStatus, EducationLevel, Priority } from "@/types/common";
 export type { AppState } from "@/types/app-state";
+export type {
+  ActivityDirection,
+  ActivityDirectionCategory,
+  ActivityDirectionGroup,
+  DirectionStatistics,
+  EventDirectionRelation
+} from "@/types/activity-directions";
+export type {
+  ActivityPlan,
+  ActivityPlanExportOptions,
+  ActivityPlanFilter,
+  ActivityPlanGrouping,
+  ActivityPlanProjection,
+  ActivityPlanSection,
+  ActivityPlanStatistics,
+  ActivityPlanTemplate
+} from "@/types/activity-plans";
+export type {
+  ActivityMatrix,
+  ActivityMatrixAnalysis,
+  ActivityMatrixBalanceIndex,
+  ActivityMatrixBalanceStatus,
+  ActivityMatrixCell,
+  ActivityMatrixColumn,
+  ActivityMatrixInput,
+  ActivityMatrixMode,
+  ActivityMatrixRecommendation,
+  ActivityMatrixRisk,
+  ActivityMatrixRiskSeverity,
+  ActivityMatrixRow,
+  ActivityMatrixStatusSummary
+} from "@/types/activity-matrix";
 export type { EducationModule } from "@/types/modules";
 export type {
   DocumentAnalysisPayload,
@@ -15,13 +47,25 @@ export type {
   NormalizedDocumentSection,
   NormalizedDocumentTable
 } from "@/types/document-processing";
+export type { DemoSchoolTemplate, DemoSchoolTemplateId } from "@/types/demo-school";
 export type {
   FederalDirection,
   FederalDirectionId,
   FederalKnowledgeBase,
   FederalProgramSection,
   FederalRequirement,
-  FederalTargetResult
+  FederalTargetResult,
+  ComplianceCheck,
+  ComplianceCheckHistory,
+  ComplianceIssue,
+  ComplianceOverallStatus,
+  ComplianceRecommendation,
+  ComplianceSeverity,
+  ComplianceStatus,
+  ComplianceTargetModule,
+  DirectionCoverageItem,
+  SectionCoverageItem,
+  TargetResultCoverageItem
 } from "@/types/federal-knowledge";
 export type {
   EducationalAssociation,
@@ -44,7 +88,7 @@ export type {
 } from "@/types/imported-documents";
 export type { KpvrItem } from "@/types/kpvr";
 export type {
-  ComplianceStatus,
+  ComplianceStatus as NormativeComplianceStatus,
   NormativeDocument,
   NormativeDocumentActualityStatus,
   NormativeDocumentCategory,
@@ -58,6 +102,13 @@ export type {
   WorkProgramDiscrepancy
 } from "@/types/normative-documents";
 export type { SchoolInfrastructure, SchoolPassport, SocialPartner } from "@/types/school";
+export type {
+  SchoolReadinessArea,
+  SchoolReadinessAreaId,
+  SchoolReadinessCheck,
+  SchoolReadinessItem,
+  SchoolReadinessStatus
+} from "@/types/school-readiness";
 export type {
   GeneratedParagraph,
   GeneratedParagraphStatus,

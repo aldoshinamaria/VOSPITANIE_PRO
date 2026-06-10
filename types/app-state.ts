@@ -1,4 +1,5 @@
 import type { EducationModule } from "@/types/modules";
+import type { ActivityDirection, EventDirectionRelation } from "@/types/activity-directions";
 import type { DocumentProcessingLogEntry, DocumentProcessingRecord } from "@/types/document-processing";
 import type { EducationalSystem } from "@/types/educational-system";
 import type { ExportDocument } from "@/types/exports";
@@ -9,10 +10,13 @@ import type { NormativeDocument } from "@/types/normative-documents";
 import type { SchoolEvent } from "@/types/events";
 import type { SchoolPassport } from "@/types/school";
 import type { WorkProgram } from "@/types/work-program";
+import type { ComplianceCheckHistory } from "@/types/federal-knowledge";
 
 export interface AppState {
   schoolPassport: SchoolPassport;
   educationModules: EducationModule[];
+  activityDirections: ActivityDirection[];
+  eventDirectionRelations: EventDirectionRelation[];
   events: SchoolEvent[];
   kpvr: KpvrItem[];
   extraActivities: ExtraActivity[];
@@ -23,5 +27,6 @@ export interface AppState {
   processedDocuments: DocumentProcessingRecord[];
   documentProcessingLogs: DocumentProcessingLogEntry[];
   workProgram: WorkProgram;
+  complianceCheckHistory: ComplianceCheckHistory[];
   exportDocuments: ExportDocument[];
 }

@@ -1,4 +1,5 @@
 import { mockAppState } from "@/data/mock-data";
+import { migrateEventDirectionRelations, standardActivityDirections } from "@/lib/domain/activity-directions";
 import type {
   EventInsert,
   EventRow,
@@ -139,6 +140,8 @@ class SupabaseAppRepository {
     const baseState = {
       schoolPassport: await this.getPassport(school.id),
       educationModules: await this.listModules(school.id),
+      activityDirections: standardActivityDirections,
+      eventDirectionRelations: mockAppState.eventDirectionRelations,
       events: await this.listEvents(school.id),
       kpvr: mockAppState.kpvr,
       extraActivities: await this.listExtraActivities(school.id),
@@ -149,13 +152,16 @@ class SupabaseAppRepository {
       processedDocuments: mockAppState.processedDocuments,
       documentProcessingLogs: mockAppState.documentProcessingLogs,
       workProgram: mockAppState.workProgram,
+      complianceCheckHistory: mockAppState.complianceCheckHistory,
       exportDocuments: mockAppState.exportDocuments
     };
+
+    const workProgramState = await this.getWorkProgramState(school.id, baseState);
 
     return {
       ...baseState,
       ...(await this.getDocumentProcessingState(school.id)),
-      workProgram: await this.getWorkProgram(school.id, baseState)
+      ...workProgramState
     };
   }
 
@@ -171,7 +177,7 @@ class SupabaseAppRepository {
       this.replaceExtractedEvents(school.id, state.extractedEvents),
       this.replaceNormativeDocuments(school.id, state.normativeDocuments),
       this.saveDocumentProcessingState(school.id, state),
-      this.saveWorkProgram(school.id, state.workProgram),
+      this.saveWorkProgramState(school.id, state),
       this.syncStaff(school.id, state)
     ]);
   }
@@ -606,6 +612,13 @@ class SupabaseAppRepository {
   }
 
   async getWorkProgram(schoolId: string, state: AppState): Promise<WorkProgram> {
+    return (await this.getWorkProgramState(schoolId, state)).workProgram;
+  }
+
+  async getWorkProgramState(
+    schoolId: string,
+    state: AppState
+  ): Promise<Pick<AppState, "workProgram" | "complianceCheckHistory" | "activityDirections" | "eventDirectionRelations">> {
     const { data, error } = await this.client
       .from("work_programs")
       .select("*")
@@ -616,7 +629,21 @@ class SupabaseAppRepository {
       throw toRepositoryError("Не удалось загрузить рабочую программу воспитания", error);
     }
 
-    return data?.data ? normalizeWorkProgram(data as WorkProgramRow, state) : createEmptyWorkProgram(state);
+    const rawData = data?.data as (Partial<WorkProgram> & Pick<Partial<AppState>, "complianceCheckHistory" | "activityDirections" | "eventDirectionRelations">) | null;
+    const activityDirections = Array.isArray(rawData?.activityDirections) ? rawData.activityDirections : state.activityDirections;
+
+    return {
+      workProgram: data?.data ? normalizeWorkProgram(data as WorkProgramRow, state) : createEmptyWorkProgram(state),
+      activityDirections,
+      eventDirectionRelations: migrateEventDirectionRelations(
+        state.events,
+        activityDirections,
+        rawData?.eventDirectionRelations
+      ),
+      complianceCheckHistory: Array.isArray(rawData?.complianceCheckHistory)
+        ? rawData.complianceCheckHistory
+        : mockAppState.complianceCheckHistory
+    };
   }
 
   async saveWorkProgram(schoolId: string, program: WorkProgram): Promise<void> {
@@ -624,6 +651,22 @@ class SupabaseAppRepository {
 
     if (error) {
       throw toRepositoryError("Не удалось сохранить рабочую программу воспитания", error);
+    }
+  }
+
+  async saveWorkProgramState(schoolId: string, state: AppState): Promise<void> {
+    const { error } = await this.client.from("work_programs").upsert({
+      ...mapWorkProgramToInsert(schoolId, state.workProgram),
+      data: {
+        ...state.workProgram,
+        activityDirections: state.activityDirections,
+        eventDirectionRelations: state.eventDirectionRelations,
+        complianceCheckHistory: state.complianceCheckHistory
+      }
+    });
+
+    if (error) {
+      throw toRepositoryError("Не удалось сохранить историю проверок рабочей программы", error);
     }
   }
 
