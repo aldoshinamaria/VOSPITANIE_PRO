@@ -5,10 +5,10 @@ import { Sidebar } from "@/components/app/sidebar";
 
 export function PageShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex">
+    <div className="min-h-screen overflow-x-clip bg-background">
+      <div className="flex min-w-0">
         <Sidebar />
-        <main className="min-w-0 flex-1 px-6 py-6 lg:px-8">
+        <main className="min-w-0 flex-1 px-4 pb-6 pt-20 sm:px-6 lg:px-8 lg:py-6">
           <DataStatus />
           {children}
         </main>

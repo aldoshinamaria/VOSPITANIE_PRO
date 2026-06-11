@@ -14,6 +14,7 @@ import {
   PieChart,
   SearchCheck,
   Network,
+  Route,
   Rocket,
   Scale,
   School,
@@ -33,6 +34,12 @@ export const navItems = [
     title: "Демо",
     href: "/demo",
     icon: Rocket
+  },
+  {
+    group: "Старт",
+    title: "Демонстрационный маршрут",
+    href: "/demo-showcase",
+    icon: Route
   },
   {
     group: "Старт",

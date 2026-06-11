@@ -7,6 +7,7 @@ import { useAppState } from "@/components/app/app-provider";
 import { EmptyState } from "@/components/app/empty-state";
 import { MetricCard } from "@/components/app/metric-card";
 import { PageHeader } from "@/components/app/page-header";
+import { ResponsiveDisclosure } from "@/components/app/responsive-disclosure";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -126,12 +127,12 @@ export default function EventExecutionPage() {
         <MetricCard title="Без ответственного" value={`${statistics.withoutResponsiblePercent}%`} icon={AlertTriangle} />
       </div>
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Фильтры контроля</CardTitle>
-          <CardDescription>Фильтры не меняют мероприятия, а показывают нужный срез исполнения.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <ResponsiveDisclosure
+        title="Фильтры контроля"
+        description="Показывают нужный срез исполнения."
+        className="mt-6"
+      >
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
           <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
             <option value="all">Все статусы</option>
             {Object.entries(eventExecutionStatusLabels).map(([value, label]) => (
@@ -181,8 +182,8 @@ export default function EventExecutionPage() {
               <RotateCcw className="h-4 w-4" />
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </ResponsiveDisclosure>
 
       <div className="mt-6 grid gap-4">
         {filteredEvents.length === 0 ? (

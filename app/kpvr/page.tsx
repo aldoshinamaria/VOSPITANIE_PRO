@@ -99,7 +99,41 @@ export default function KpvrPage() {
               </div>
             </header>
 
-            <div className="mt-8 overflow-x-auto rounded-md border">
+            <div className="mt-8 grid gap-3 md:hidden">
+              {activeDocument.groups.length === 0 ? (
+                <div className="rounded-md border bg-slate-50 p-4 text-center text-sm text-slate-500">
+                  Для выбранного уровня образования пока нет мероприятий. Добавьте мероприятие в реестре и укажите этот уровень.
+                </div>
+              ) : (
+                activeDocument.groups.map((group, groupIndex) => {
+                  const startNumber =
+                    activeDocument.groups.slice(0, groupIndex).reduce((total, currentGroup) => total + currentGroup.rows.length, 0) + 1;
+
+                  return (
+                    <section key={group.moduleId} className="rounded-md border bg-white">
+                      <div className="border-b bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900">
+                        Модуль: {group.moduleTitle}
+                      </div>
+                      <div className="grid gap-3 p-3">
+                        {group.rows.map((row, index) => (
+                          <article key={row.id} className="rounded-md border p-3">
+                            <div className="text-xs font-semibold text-slate-500">№ {startNumber + index}</div>
+                            <div className="mt-1 font-medium text-slate-950">{row.title}</div>
+                            <dl className="mt-3 grid gap-2 text-sm">
+                              <MobileField label="Классы" value={row.classes} />
+                              <MobileField label="Сроки" value={formatKpvrPeriod(row)} />
+                              <MobileField label="Ответственные" value={row.responsible} />
+                            </dl>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="mt-8 hidden overflow-x-auto rounded-md border md:block">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-100">
@@ -132,6 +166,15 @@ export default function KpvrPage() {
         </CardContent>
       </Card>
     </>
+  );
+}
+
+function MobileField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-semibold uppercase tracking-normal text-slate-500">{label}</dt>
+      <dd className="mt-0.5 text-slate-800">{value}</dd>
+    </div>
   );
 }
 

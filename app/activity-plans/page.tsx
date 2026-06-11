@@ -7,6 +7,7 @@ import { useAppState } from "@/components/app/app-provider";
 import { EmptyState } from "@/components/app/empty-state";
 import { MetricCard } from "@/components/app/metric-card";
 import { PageHeader } from "@/components/app/page-header";
+import { ResponsiveDisclosure } from "@/components/app/responsive-disclosure";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -151,12 +152,11 @@ export default function ActivityPlansPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Фильтры и группировка</CardTitle>
-              <CardDescription>Фильтры меняют проекцию плана, но не меняют сами мероприятия.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3">
+          <ResponsiveDisclosure
+            title="Фильтры и группировка"
+            description="Откройте, чтобы изменить проекцию плана."
+          >
+            <div className="grid gap-3">
               <label className="grid gap-2 text-sm font-medium">
                 Группировка
                 <Select value={grouping} onChange={(event) => setGrouping(event.target.value as ActivityPlanGrouping)}>
@@ -250,8 +250,8 @@ export default function ActivityPlansPage() {
                 <RotateCcw className="h-4 w-4" />
                 Сбросить фильтры
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </ResponsiveDisclosure>
         </div>
 
         <div className="grid gap-4">
@@ -298,6 +298,29 @@ export default function ActivityPlansPage() {
                 plan.sections.map((section) => (
                   <div key={section.id} className="overflow-hidden rounded-md border">
                     <div className="border-b bg-slate-50 px-4 py-3 text-sm font-semibold">{section.title}</div>
+                    <div className="grid gap-3 p-3 md:hidden">
+                      {section.rows.map((row, rowIndex) => (
+                        <article key={row.id} className="rounded-md border bg-white p-3">
+                          <div className="text-xs font-semibold text-muted-foreground">№ {rowIndex + 1}</div>
+                          <div className="mt-1 font-medium">{row.title}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">{row.moduleTitle}</div>
+                          <dl className="mt-3 grid gap-2 text-sm">
+                            <MobileField label="Дата" value={row.date} />
+                            <MobileField label="Классы" value={row.classes} />
+                            <MobileField label="Ответственные" value={row.responsible} />
+                            <MobileField label="Статус" value={statusLabels[row.status]} />
+                          </dl>
+                          <div className="mt-3 flex flex-wrap gap-1">
+                            {row.directionTitles.map((title) => (
+                              <Badge key={title} variant="secondary">
+                                {title}
+                              </Badge>
+                            ))}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                    <div className="hidden md:block">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -335,6 +358,7 @@ export default function ActivityPlansPage() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
                   </div>
                 ))
               )}
@@ -343,6 +367,15 @@ export default function ActivityPlansPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function MobileField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5">{value}</dd>
+    </div>
   );
 }
 

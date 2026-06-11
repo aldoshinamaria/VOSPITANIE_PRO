@@ -212,7 +212,7 @@ export default function DemoPage() {
   }
 
   return (
-    <main className="-m-6 bg-[radial-gradient(circle_at_top_left,_rgba(14,116,144,0.14),_transparent_34%),linear-gradient(180deg,#f8fafc_0%,#ffffff_42%,#f8fafc_100%)] px-4 py-8 text-slate-950 sm:px-6 lg:px-8">
+    <main className="-mx-4 -mb-6 bg-[radial-gradient(circle_at_top_left,_rgba(14,116,144,0.14),_transparent_34%),linear-gradient(180deg,#f8fafc_0%,#ffffff_42%,#f8fafc_100%)] px-4 py-8 text-slate-950 sm:-mx-6 sm:px-6 lg:-m-6 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-10">
         <section className="grid min-h-[560px] items-center gap-8 py-8 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="max-w-3xl">
@@ -237,6 +237,9 @@ export default function DemoPage() {
               </Button>
               <Button asChild variant="outline" className="h-12 px-6">
                 <a href="#demo-route">Посмотреть маршрут демо</a>
+              </Button>
+              <Button asChild variant="secondary" className="h-12 px-6">
+                <Link href="/demo-showcase">Посмотреть систему за 5 минут</Link>
               </Button>
               <Button asChild variant="ghost" className="h-12 px-6">
                 <Link href="/">Открыть главную панель</Link>

@@ -7,6 +7,7 @@ import { useAppState } from "@/components/app/app-provider";
 import { EmptyState } from "@/components/app/empty-state";
 import { MetricCard } from "@/components/app/metric-card";
 import { PageHeader } from "@/components/app/page-header";
+import { ResponsiveDisclosure } from "@/components/app/responsive-disclosure";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,12 +129,11 @@ export default function ActivityReportsPage() {
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[360px_1fr]">
         <div className="grid gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Параметры отчета</CardTitle>
-              <CardDescription>Отчет строится из единого реестра мероприятий и не создает дублей данных.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3">
+          <ResponsiveDisclosure
+            title="Параметры отчета"
+            description="Отчет строится из единого реестра мероприятий."
+          >
+            <div className="grid gap-3">
               <label className="grid gap-2 text-sm font-medium">
                 Вид отчета
                 <Select value={filter.directionId} onChange={(event) => setFilter((current) => ({ ...current, directionId: event.target.value }))}>
@@ -213,8 +213,8 @@ export default function ActivityReportsPage() {
                 <RotateCcw className="h-4 w-4" />
                 Сбросить
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </ResponsiveDisclosure>
 
           <Card>
             <CardHeader>
@@ -303,28 +303,43 @@ export default function ActivityReportsPage() {
                         <div className="font-medium">{section.title}</div>
                         <div className="text-xs text-muted-foreground">{section.description}</div>
                       </div>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Мероприятие</TableHead>
-                            <TableHead>Дата</TableHead>
-                            <TableHead>Классы</TableHead>
-                            <TableHead>Ответственный</TableHead>
-                            <TableHead>Участники</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {section.rows.map((row) => (
-                            <TableRow key={row.id}>
-                              <TableCell className="font-medium">{row.title}</TableCell>
-                              <TableCell>{row.date}</TableCell>
-                              <TableCell>{row.classes}</TableCell>
-                              <TableCell>{row.responsible}</TableCell>
-                              <TableCell>{row.participantsCount}</TableCell>
+                      <div className="grid gap-3 p-3 md:hidden">
+                        {section.rows.map((row) => (
+                          <article key={row.id} className="rounded-md border bg-white p-3">
+                            <div className="font-medium">{row.title}</div>
+                            <dl className="mt-3 grid gap-2 text-sm">
+                              <MobileField label="Дата" value={row.date} />
+                              <MobileField label="Классы" value={row.classes} />
+                              <MobileField label="Ответственный" value={row.responsible} />
+                              <MobileField label="Участники" value={String(row.participantsCount)} />
+                            </dl>
+                          </article>
+                        ))}
+                      </div>
+                      <div className="hidden md:block">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Мероприятие</TableHead>
+                              <TableHead>Дата</TableHead>
+                              <TableHead>Классы</TableHead>
+                              <TableHead>Ответственный</TableHead>
+                              <TableHead>Участники</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {section.rows.map((row) => (
+                              <TableRow key={row.id}>
+                                <TableCell className="font-medium">{row.title}</TableCell>
+                                <TableCell>{row.date}</TableCell>
+                                <TableCell>{row.classes}</TableCell>
+                                <TableCell>{row.responsible}</TableCell>
+                                <TableCell>{row.participantsCount}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
                   ))
                 )}
@@ -334,6 +349,15 @@ export default function ActivityReportsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function MobileField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5">{value}</dd>
+    </div>
   );
 }
 

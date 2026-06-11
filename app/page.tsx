@@ -126,6 +126,25 @@ export default function DashboardPage() {
             <CardDescription>Плановые события, ответственные и текущий статус.</CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="grid gap-3 md:hidden">
+              {state.events.length === 0 ? (
+                <div className="rounded-md border bg-slate-50 p-4 text-center text-sm text-muted-foreground">
+                  Мероприятий пока нет. Загрузите демо-школу или добавьте первое мероприятие.
+                </div>
+              ) : (
+                state.events.slice(0, 8).map((event) => (
+                  <article key={event.id} className="rounded-md border p-3">
+                    <div className="text-xs font-semibold text-muted-foreground">{formatRuDate(event.startDate)}</div>
+                    <div className="mt-1 font-medium">{event.title}</div>
+                    <div className="mt-2 text-sm text-muted-foreground">{event.responsible}</div>
+                    <div className="mt-3">
+                      <EventStatusBadge status={event.status} />
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -156,6 +175,7 @@ export default function DashboardPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
 

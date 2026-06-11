@@ -1013,3 +1013,42 @@ Next steps:
 
 - [ ] Deploy `/demo` to Vercel after refreshing the Vercel account token.
 - [ ] Add a branded public landing header if social traffic grows.
+
+## Stage 17.7.2: Mobile First Product Readiness
+
+Current stage: adapted the first-contact and core product routes for mobile use from messengers and social links.
+
+Done:
+
+- [x] Added mobile-first shell spacing and protected the app from body-level horizontal overflow.
+- [x] Reworked `Sidebar` into responsive navigation with hamburger menu on mobile.
+- [x] Added mobile menu overlay, outside-click close, Escape close, route-change close, body scroll lock and active route highlighting.
+- [x] Increased default button, input, select and textarea touch targets for phone use.
+- [x] Added `ResponsiveDisclosure` for mobile filter panels.
+- [x] Adapted filters on `/activity-plans`, `/activity-reports` and `/event-execution` into collapsible mobile blocks.
+- [x] Added mobile card views for КПВР rows on `/kpvr`.
+- [x] Added mobile card views for activity plan rows on `/activity-plans`.
+- [x] Added mobile card views for report event rows on `/activity-reports`.
+- [x] Added mobile card view for nearest events on `/`.
+- [x] Adjusted `/demo` and `/demo-showcase` full-bleed backgrounds so they do not exceed mobile viewport width.
+- [x] Smoke checked first- and second-priority routes on local dev server.
+- [x] `npm.cmd run lint` passes during implementation.
+
+Architectural decisions:
+
+- Mobile navigation is implemented inside the existing `Sidebar` component; no duplicate mobile app or alternate route tree was introduced.
+- Tables remain available on desktop, while the highest-risk document tables render as semantic mobile cards below `md`.
+- Filters use native `details` through `ResponsiveDisclosure`, avoiding heavy UI libraries and keeping desktop behavior expanded.
+- Touch-target improvements were made in base UI primitives to improve all forms without editing every form field manually.
+
+Known technical debt:
+
+- Next.js dev mode still warns that parts of `mockAppState` are not plain serializable values when passed from server layout to the client provider. Production build is not blocked, but this should be normalized in a future data-initialization cleanup.
+- Full visual QA at exact widths 320, 360, 375, 390, 414, 768 and 1024 still needs browser screenshots after the in-app browser runner is available.
+
+Next steps:
+
+- [ ] Add screenshot-based mobile regression checks for the public demo flow.
+- [ ] Convert remaining low-priority dense tables in `/events`, `/import-documents` and `/extra-activities` to mobile cards.
+- [ ] Normalize `mockAppState` serialization before passing it into `AppProvider`.
+- [ ] Add quick-action mobile shortcuts for КПВР, reports, inspections and work program in the mobile menu header.
