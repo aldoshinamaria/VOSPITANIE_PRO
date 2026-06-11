@@ -15,6 +15,7 @@ import {
   FolderCheck,
   Grid3X3,
   Loader2,
+  Network,
   Route,
   SearchCheck,
   ShieldCheck,
@@ -28,8 +29,15 @@ import { useAppState } from "@/components/app/app-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createDemoSchoolFactory } from "@/lib/domain/demo-school-factory";
+import { formatRuDate } from "@/lib/utils";
 
 type DemoStatus = "idle" | "loading" | "loaded" | "error";
+
+const educationLevelLabels = {
+  noo: "НОО",
+  ooo: "ООО",
+  soo: "СОО"
+} as const;
 
 const replacedTools = [
   "десятки Word-файлов",
@@ -131,11 +139,51 @@ const timeSavings = [
   }
 ];
 
+const valueFlowActions = [
+  { title: "Посмотреть мероприятие", href: "/events", icon: CalendarCheck },
+  { title: "Посмотреть КПВР", href: "/kpvr", icon: ClipboardList },
+  { title: "Посмотреть отчет", href: "/activity-reports", icon: BarChart3 },
+  { title: "Посмотреть план деятельности", href: "/activity-plans", icon: Route }
+];
+
+const keyScenarios = [
+  {
+    title: "Получить КПВР",
+    description: "Откройте календарный план по уровням НОО, ООО и СОО.",
+    href: "/kpvr",
+    icon: ClipboardList
+  },
+  {
+    title: "Получить отчет",
+    description: "Посмотрите отчетность по направлениям и исполнению.",
+    href: "/activity-reports",
+    icon: BarChart3
+  },
+  {
+    title: "Подготовиться к проверке",
+    description: "Откройте готовность, риски, рекомендации и пакеты документов.",
+    href: "/inspection-center",
+    icon: SearchCheck
+  }
+];
+
 export default function DemoPage() {
   const { updateState, error } = useAppState();
   const [status, setStatus] = React.useState<DemoStatus>("idle");
   const factory = React.useMemo(() => createDemoSchoolFactory(), []);
   const previewState = React.useMemo(() => factory.createDemoSchool("urban"), [factory]);
+  const featuredEvent =
+    previewState.events.find((event) =>
+      [event.title, event.description, event.direction].join(" ").match(/георгиевская|день победы|урок мужества|патриот/i)
+    ) ?? previewState.events[0];
+  const featuredModule = previewState.educationModules.find((module) => module.id === featuredEvent?.moduleId);
+  const featuredDirections = previewState.eventDirectionRelations
+    .filter((relation) => relation.eventId === featuredEvent?.id)
+    .map((relation) => previewState.activityDirections.find((direction) => direction.id === relation.directionId)?.title)
+    .filter((title): title is string => Boolean(title));
+  const featuredAssociation = previewState.educationalSystem.associations.find(
+    (association) => association.id === featuredEvent?.associationId
+  );
 
   const metrics = React.useMemo(
     () => [
@@ -195,6 +243,19 @@ export default function DemoPage() {
               </Button>
             </div>
             <DemoStateNotice status={status} error={error} />
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {keyScenarios.map((scenario) => (
+                <Button key={scenario.href} asChild variant="outline" className="h-auto justify-start bg-white px-4 py-3 text-left">
+                  <Link href={scenario.href}>
+                    <scenario.icon className="h-4 w-4 shrink-0" />
+                    <span>
+                      <span className="block font-semibold">{scenario.title}</span>
+                      <span className="mt-1 block text-xs font-normal text-slate-500">{scenario.description}</span>
+                    </span>
+                  </Link>
+                </Button>
+              ))}
+            </div>
           </div>
 
           <Card className="overflow-hidden border-slate-200 bg-white/85 shadow-xl shadow-slate-200/70 backdrop-blur">
@@ -238,7 +299,7 @@ export default function DemoPage() {
               <h2 className="mt-2 text-3xl font-semibold tracking-normal">Готовые данные для показа продукта</h2>
             </div>
             <p className="max-w-xl text-sm leading-6 text-slate-600">
-              Метрики берутся из демо-состояния, которое загружается через существующий DemoSchoolFactory.
+              Метрики берутся из готового демонстрационного набора и помогают быстро увидеть продукт в работе.
             </p>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -247,6 +308,128 @@ export default function DemoPage() {
             ))}
           </div>
         </section>
+
+        {featuredEvent ? (
+          <section className="overflow-hidden rounded-3xl border border-sky-200 bg-slate-950 text-white shadow-2xl shadow-slate-300/70">
+            <div className="grid gap-0 xl:grid-cols-[0.9fr_1.1fr]">
+              <div className="border-b border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.25),_transparent_36%)] p-6 sm:p-8 xl:border-b-0 xl:border-r">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-200">
+                  Как работает система на реальном мероприятии
+                </p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-normal sm:text-4xl">
+                  Одно мероприятие работает во всех документах
+                </h2>
+                <p className="mt-4 text-sm leading-6 text-slate-300">
+                  Одно мероприятие вносится один раз и автоматически используется во всех документах школы.
+                </p>
+
+                <div className="mt-6 rounded-2xl border border-white/15 bg-white p-5 text-slate-950 shadow-xl">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-800">
+                        Карточка мероприятия
+                      </div>
+                      <h3 className="mt-2 text-2xl font-semibold tracking-normal">{featuredEvent.title}</h3>
+                    </div>
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                      {featuredEvent.status === "planned" ? "Планируется" : featuredEvent.status}
+                    </span>
+                  </div>
+                  <div className="mt-5 grid gap-3 text-sm">
+                    <EventFact label="Дата" value={formatRuDate(featuredEvent.startDate)} />
+                    <EventFact label="Ответственный" value={featuredEvent.responsible} />
+                    <EventFact
+                      label="Направления деятельности"
+                      value={(featuredDirections.length > 0 ? featuredDirections : [featuredEvent.direction]).join(", ")}
+                    />
+                    <EventFact label="Модуль воспитания" value={featuredModule?.title ?? featuredEvent.direction} />
+                    <EventFact
+                      label="Уровень образования"
+                      value={featuredEvent.educationLevels.map((level) => educationLevelLabels[level]).join(", ")}
+                    />
+                    <EventFact label="Классы" value={featuredEvent.classes} />
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {valueFlowActions.map((action) => (
+                    <Button key={action.href} asChild variant="secondary" className="justify-between">
+                      <Link href={action.href}>
+                        <span className="flex items-center gap-2">
+                          <action.icon className="h-4 w-4" />
+                          {action.title}
+                        </span>
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-6 sm:p-8">
+                <div className="grid gap-3">
+                  <FlowCard icon={CalendarCheck} title="Мероприятие" description={featuredEvent.title} />
+                  <FlowArrow />
+                  <FlowCard icon={ClipboardList} title="КПВР" description="появляется в планах ООО и СОО по дате мероприятия" />
+                  <FlowArrow />
+                  <FlowCard icon={Route} title={`План: ${featuredEvent.direction}`} description="использует ту же карточку без повторного ввода" />
+                  <FlowArrow />
+                  <FlowCard
+                    icon={Network}
+                    title={featuredAssociation ? `План объединения: ${featuredAssociation.title}` : "План объединения"}
+                    description="связь берется из воспитательной системы школы"
+                  />
+                  <FlowArrow />
+                  <FlowCard icon={FileText} title="Рабочая программа воспитания" description="мероприятие становится источником для традиций и содержания" />
+                  <FlowArrow />
+                  <FlowCard icon={BarChart3} title="Отчет за период" description="учитывается по статусу, участникам и направлению" />
+                  <FlowArrow />
+                  <FlowCard icon={SearchCheck} title="Центр проверок" description="попадает в готовность, риски и рекомендации" />
+                  <FlowArrow />
+                  <FlowCard icon={FileArchive} title="Пакет документов" description="может войти в подборку материалов для проверки" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 border-t border-white/10 bg-white p-5 text-slate-950 sm:p-6 lg:grid-cols-2">
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+                <div className="text-sm font-semibold uppercase tracking-[0.16em] text-red-800">Без Воспитание.PRO</div>
+                <h3 className="mt-2 text-2xl font-semibold tracking-normal">Ручное дублирование</h3>
+                <p className="mt-3 text-sm leading-6 text-red-900">
+                  Мероприятие приходится заносить в несколько документов: КПВР, отдельный план, отчет, программу и
+                  материалы к проверке.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                <div className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-800">С Воспитание.PRO</div>
+                <h3 className="mt-2 text-2xl font-semibold tracking-normal">Один ввод данных</h3>
+                <p className="mt-3 text-sm leading-6 text-emerald-900">
+                  Мероприятие заносится один раз. Документы, планы, отчеты, проверки, аналитика и рабочая программа
+                  используют одну связанную карточку.
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t border-white/10 bg-slate-900 p-5 sm:p-6">
+              <h3 className="text-2xl font-semibold tracking-normal">Почему это экономит время</h3>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {[
+                  "Создание мероприятия — 1 действие.",
+                  "Обновление мероприятия — 1 действие.",
+                  "Изменения отражаются в КПВР.",
+                  "Изменения отражаются в планах.",
+                  "Изменения отражаются в отчетах.",
+                  "Изменения отражаются в проверках, аналитике и рабочей программе."
+                ].map((item) => (
+                  <div key={item} className="flex gap-3 rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-slate-100">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         <section id="demo-route" className="scroll-mt-6">
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -331,7 +514,8 @@ function DemoStateNotice({ status, error }: { status: DemoStatus; error: string 
   if (status === "idle") {
     return (
       <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">
-        Демо еще не загружено. Нажмите кнопку, чтобы заполнить систему готовой школой и открыть маршрут просмотра.
+        Это демонстрационный режим. Данные сохраняются в браузере и подходят для просмотра возможностей. Для работы
+        реальной школы потребуется подключение базы данных.
       </div>
     );
   }
@@ -349,6 +533,7 @@ function DemoStateNotice({ status, error }: { status: DemoStatus; error: string 
     return (
       <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">
         Демо-школа загружена. Теперь можно посмотреть КПВР, рабочую программу, планы, отчеты и центр проверок.
+        Данные демонстрационные и сохраняются в этом браузере.
       </div>
     );
   }
@@ -356,6 +541,47 @@ function DemoStateNotice({ status, error }: { status: DemoStatus; error: string 
   return (
     <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
       Не удалось загрузить демо-школу. {error ? `Причина: ${error}` : "Попробуйте обновить страницу и повторить загрузку."}
+    </div>
+  );
+}
+
+function EventFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-slate-50 p-3">
+      <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</div>
+      <div className="mt-1 font-medium text-slate-950">{value}</div>
+    </div>
+  );
+}
+
+function FlowCard({
+  icon: Icon,
+  title,
+  description
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-300 text-sky-950">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <div className="font-semibold text-white">{title}</div>
+          <p className="mt-1 text-sm leading-6 text-slate-300">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FlowArrow() {
+  return (
+    <div className="flex justify-center" aria-hidden="true">
+      <div className="h-5 w-px bg-sky-300/70" />
     </div>
   );
 }

@@ -89,7 +89,7 @@ export default function NormativeDocumentsPage() {
     setVersion("");
     setSource("");
     setFile(null);
-    setMessage("Нормативный документ добавлен. Требования сформированы rule-based анализатором.");
+    setMessage("Нормативный документ добавлен. Требования подготовлены по выбранному типу документа.");
   }
 
   async function updateActualityStatus(id: string, actualityStatus: NormativeDocumentActualityStatus) {
@@ -151,7 +151,7 @@ export default function NormativeDocumentsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Добавить документ</CardTitle>
-            <CardDescription>Файл сохраняется как метаданные. Содержимое пока не анализируется: требования создаются rule-based анализатором по типу документа.</CardDescription>
+            <CardDescription>Файл сохраняется как карточка документа. Требования подготавливаются по выбранному типу документа.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="grid gap-4" onSubmit={addDocument}>

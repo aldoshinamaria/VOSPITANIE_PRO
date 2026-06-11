@@ -31,10 +31,10 @@ const sourceTypeLabels: Record<DocumentSourceType, string> = {
 };
 
 const validationLabels: Record<DocumentValidationStatus, string> = {
-  excellent: "Excellent",
-  good: "Good",
-  needs_review: "Needs Review",
-  invalid: "Invalid",
+  excellent: "Отлично",
+  good: "Хорошо",
+  needs_review: "Требует проверки",
+  invalid: "Не подходит",
   requires_ocr: "Требуется OCR"
 };
 
@@ -90,8 +90,8 @@ export default function DocumentProcessingPage() {
   return (
     <>
       <PageHeader
-        title="Документный движок"
-        description="Production-ready слой обработки документов: хранение файла, извлечение текста, структура, нормализация, валидация и подготовка данных для будущего AI-анализа."
+        title="Работа с документами"
+        description="Проверка DOCX, PDF и XLSX перед использованием в КПВР, рабочей программе, нормативных документах и пакетах для проверок."
       />
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -121,7 +121,7 @@ export default function DocumentProcessingPage() {
           </label>
           <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed bg-slate-50 px-6 py-6 text-center transition-colors hover:bg-slate-100">
             <FileUp className="h-7 w-7 text-slate-500" />
-            <span className="mt-2 text-sm font-medium">{isProcessing ? "Документ обрабатывается..." : "Выберите DOCX, PDF или XLSX до 50 МБ"}</span>
+            <span className="mt-2 text-sm font-medium">{isProcessing ? "Документ проверяется..." : "Выберите DOCX, PDF или XLSX до 50 МБ"}</span>
             <span className="mt-1 text-xs text-muted-foreground">Данные не попадут в КПВР, РПВ или нормативный центр без ручного подтверждения</span>
             <Input
               ref={inputRef}
@@ -147,7 +147,7 @@ export default function DocumentProcessingPage() {
           </CardHeader>
           <CardContent className="grid gap-3">
             {state.processedDocuments.length === 0 ? (
-              <EmptyState icon={FileSearch} title="Документы не обработаны" description="Загрузите тестовый DOCX, PDF или XLSX для проверки движка." />
+              <EmptyState icon={FileSearch} title="Документы еще не проверялись" description="Загрузите DOCX, PDF или XLSX, чтобы увидеть качество распознавания структуры документа." />
             ) : (
               state.processedDocuments.map((document) => (
                 <ProcessedDocumentCard key={document.id} document={document} onConfirm={() => confirmDocument(document.id)} />
@@ -158,12 +158,12 @@ export default function DocumentProcessingPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Журнал обработки</CardTitle>
-            <CardDescription>Пользователь видит, когда документ загружен, обработан, какие были предупреждения и ошибки.</CardDescription>
+            <CardTitle>Журнал проверки</CardTitle>
+            <CardDescription>Пользователь видит, когда документ загружен, проверен, какие были предупреждения и ошибки.</CardDescription>
           </CardHeader>
           <CardContent className="grid max-h-[520px] gap-3 overflow-auto">
             {state.documentProcessingLogs.length === 0 ? (
-              <EmptyState icon={TimerReset} title="Журнал пуст" description="Записи появятся после первой обработки документа." />
+              <EmptyState icon={TimerReset} title="Журнал пуст" description="Записи появятся после первой проверки документа." />
             ) : (
               state.documentProcessingLogs.map((entry) => <LogEntry key={entry.id} entry={entry} />)
             )}
@@ -181,7 +181,7 @@ function DocumentReview({ document, onConfirm }: { document: NormalizedDocument;
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <CardTitle>Экран проверки: {document.title}</CardTitle>
-            <CardDescription>Перед использованием пользователь должен проверить качество извлечения и подтвердить документ вручную.</CardDescription>
+            <CardDescription>Перед использованием пользователь должен проверить качество найденного текста и подтвердить документ вручную.</CardDescription>
           </div>
           <ValidationBadge status={document.validationStatus} score={document.qualityScore} />
         </div>
@@ -194,7 +194,7 @@ function DocumentReview({ document, onConfirm }: { document: NormalizedDocument;
           <Summary title="Списков" value={document.lists.length} />
         </div>
         <ReviewBlock title="Что найдено" items={buildFoundItems(document)} />
-        <ReviewBlock title="Что не удалось извлечь" items={buildMissingItems(document)} />
+        <ReviewBlock title="Что не удалось найти" items={buildMissingItems(document)} />
         <ReviewBlock title="Что вызывает сомнения" items={document.warnings.length > 0 ? document.warnings : ["Критичных сомнений не обнаружено."]} />
         <ReviewBlock title="Что требует ручной проверки" items={buildManualReviewItems(document)} />
         <div className="rounded-md border bg-slate-50 p-4">
@@ -318,7 +318,7 @@ function buildMissingItems(document: NormalizedDocument) {
   const items = [];
 
   if (document.validationStatus === "requires_ocr") {
-    items.push("Текст сканированного PDF не извлечен. Требуется OCR.");
+    items.push("Текст сканированного PDF не найден. Требуется OCR.");
   }
 
   if (document.sections.length === 0) {
@@ -329,7 +329,7 @@ function buildMissingItems(document: NormalizedDocument) {
     items.push("Табличные диапазоны XLSX не найдены.");
   }
 
-  return items.length > 0 ? items : ["Критичных потерь извлечения не обнаружено."];
+  return items.length > 0 ? items : ["Критичных потерь данных не обнаружено."];
 }
 
 function buildManualReviewItems(document: NormalizedDocument) {

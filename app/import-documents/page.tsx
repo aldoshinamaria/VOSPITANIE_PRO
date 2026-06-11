@@ -156,7 +156,7 @@ export default function ImportDocumentsPage() {
       }));
       setError(null);
       setImportReport(null);
-      setMessage(`Добавлено файлов: ${nextDocuments.length}. Для анализа нажмите «Извлечь мероприятия».`);
+      setMessage(`Добавлено файлов: ${nextDocuments.length}. Для просмотра событий нажмите «Найти мероприятия».`);
     } catch {
       setMessage(null);
     } finally {
@@ -221,7 +221,7 @@ export default function ImportDocumentsPage() {
           item.id === document.id ? { ...item, status: "error" } : item
         )
       }));
-      setError("Не удалось выполнить mock-извлечение мероприятий.");
+      setError("Не удалось найти мероприятия в документе.");
     } finally {
       setPendingExtractionId(null);
     }
@@ -321,7 +321,7 @@ export default function ImportDocumentsPage() {
     <>
       <PageHeader
         title="Импорт документов"
-        description="Загрузка DOCX, PDF и XLSX, mock-извлечение мероприятий и импорт проверенных событий в основной реестр."
+        description="Загрузка DOCX, PDF и XLSX, поиск мероприятий и импорт проверенных событий в основной реестр."
       />
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -353,7 +353,7 @@ export default function ImportDocumentsPage() {
         <CardHeader>
           <CardTitle>Загрузить документы</CardTitle>
           <CardDescription>
-            Файлы не анализируются автоматически. После загрузки нажмите «Извлечь мероприятия» у нужного документа.
+            Файлы не анализируются автоматически. После загрузки нажмите «Найти мероприятия» у нужного документа.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -377,7 +377,7 @@ export default function ImportDocumentsPage() {
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Загруженные файлы</CardTitle>
-          <CardDescription>Список документов, подготовленных для mock-обработки.</CardDescription>
+          <CardDescription>Список документов, подготовленных для просмотра и поиска мероприятий.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {documents.length === 0 ? (
@@ -425,7 +425,7 @@ export default function ImportDocumentsPage() {
                             disabled={isSaving || Boolean(pendingExtractionId)}
                             onClick={() => extractEvents(document)}
                           >
-                            {isPending ? "Извлечение..." : "Извлечь мероприятия"}
+                            {isPending ? "Поиск..." : "Найти мероприятия"}
                           </Button>
                           <Button
                             variant="ghost"
@@ -451,7 +451,7 @@ export default function ImportDocumentsPage() {
         <CardHeader>
           <CardTitle>Найденные мероприятия</CardTitle>
           <CardDescription>
-            Результат mock-извлечения. Отметьте события, проверьте предупреждения и импортируйте их в основной реестр.
+            Найденные мероприятия. Отметьте события, проверьте предупреждения и импортируйте их в основной реестр.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -529,7 +529,7 @@ export default function ImportDocumentsPage() {
             <EmptyState
               icon={CheckSquare}
               title="Найденные мероприятия отсутствуют"
-              description="Загрузите документ и нажмите «Извлечь мероприятия», чтобы увидеть mock-результат."
+              description="Загрузите документ и нажмите «Найти мероприятия», чтобы увидеть найденные события."
             />
           ) : (
             <div className="overflow-x-auto rounded-md border">

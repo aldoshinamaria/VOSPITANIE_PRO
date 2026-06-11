@@ -8,6 +8,20 @@ import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const groupedItems = navItems.reduce(
+    (groups, item) => {
+      const group = groups.find((current) => current.title === item.group);
+
+      if (group) {
+        group.items.push(item);
+      } else {
+        groups.push({ title: item.group, items: [item] });
+      }
+
+      return groups;
+    },
+    [] as { title: (typeof navItems)[number]["group"]; items: (typeof navItems)[number][] }[]
+  );
 
   return (
     <aside className="flex min-h-screen w-72 shrink-0 flex-col border-r bg-slate-950 text-white">
@@ -15,27 +29,36 @@ export function Sidebar() {
         <div className="text-lg font-semibold tracking-normal">Воспитание.PRO</div>
         <div className="mt-1 text-sm text-slate-300">Рабочее место заместителя директора</div>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-3">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
+      <nav className="flex flex-1 flex-col gap-4 overflow-y-auto p-3">
+        {groupedItems.map((group) => (
+          <div key={group.title} className="grid gap-1">
+            <div className="px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              {group.title}
+            </div>
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white",
-                isActive && "bg-white text-slate-950 hover:bg-white hover:text-slate-950"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              <span>{item.title}</span>
-            </Link>
-          );
-        })}
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white",
+                    isActive && "bg-white text-slate-950 hover:bg-white hover:text-slate-950"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.title}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
-      <div className="border-t border-white/10 p-4 text-xs text-slate-400">Данные сохраняются в этом браузере</div>
+      <div className="border-t border-white/10 p-4 text-xs text-slate-400">
+        Данные демо сохраняются в этом браузере
+      </div>
     </aside>
   );
 }
