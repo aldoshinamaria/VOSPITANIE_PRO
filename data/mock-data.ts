@@ -3,7 +3,7 @@ import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-a
 import { migrateEventDirectionRelations, standardActivityDirections } from "@/lib/domain/activity-directions";
 import { migrateEventExecutions } from "@/lib/domain/event-execution";
 
-export const mockAppState: AppState = {
+const mockAppStateDraft: AppState = {
   schoolPassport: {
     id: "school-1",
     name: "МБОУ Средняя школа N 12",
@@ -385,3 +385,5 @@ export const mockAppState: AppState = {
     }
   ]
 };
+
+export const mockAppState: AppState = JSON.parse(JSON.stringify(mockAppStateDraft)) as AppState;
