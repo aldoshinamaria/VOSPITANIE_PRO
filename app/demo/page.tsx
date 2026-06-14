@@ -40,6 +40,11 @@ const educationLevelLabels = {
   soo: "СОО"
 } as const;
 
+const ctaGridClass = "mt-8 grid gap-3 sm:grid-cols-2";
+const ctaButtonClass = "h-14 min-h-14 min-w-[13.75rem] px-5 py-3 text-center";
+const ctaLabelClass =
+  "block max-w-[13rem] overflow-hidden text-center text-sm leading-5 whitespace-normal break-normal [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]";
+
 const replacedTools = [
   "десятки Word-файлов",
   "Excel-таблицы с мероприятиями",
@@ -169,35 +174,37 @@ const keyScenarios = [
 ];
 
 export default function DemoPage() {
-  const { updateState, error } = useAppState();
+  const { state, updateState, error } = useAppState();
   const [status, setStatus] = React.useState<DemoStatus>("idle");
   const factory = React.useMemo(() => createDemoSchoolFactory(), []);
   const previewState = React.useMemo(() => factory.createDemoSchool("urban"), [factory]);
+  const demoLoaded = !factory.isEmpty(state);
+  const activeState = demoLoaded ? state : previewState;
   const featuredEvent =
-    previewState.events.find((event) =>
+    activeState.events.find((event) =>
       [event.title, event.description, event.direction].join(" ").match(/георгиевская|день победы|урок мужества|патриот/i)
-    ) ?? previewState.events[0];
-  const featuredModule = previewState.educationModules.find((module) => module.id === featuredEvent?.moduleId);
-  const featuredDirections = previewState.eventDirectionRelations
+    ) ?? activeState.events[0];
+  const featuredModule = activeState.educationModules.find((module) => module.id === featuredEvent?.moduleId);
+  const featuredDirections = activeState.eventDirectionRelations
     .filter((relation) => relation.eventId === featuredEvent?.id)
-    .map((relation) => previewState.activityDirections.find((direction) => direction.id === relation.directionId)?.title)
+    .map((relation) => activeState.activityDirections.find((direction) => direction.id === relation.directionId)?.title)
     .filter((title): title is string => Boolean(title));
-  const featuredAssociation = previewState.educationalSystem.associations.find(
+  const featuredAssociation = activeState.educationalSystem.associations.find(
     (association) => association.id === featuredEvent?.associationId
   );
 
   const metrics = React.useMemo(
     () => [
-      { label: "обучающихся", value: previewState.schoolPassport.studentsCount, icon: Users },
-      { label: "классов", value: previewState.schoolPassport.classesCount, icon: Boxes },
-      { label: "мероприятий", value: previewState.events.length, icon: CalendarCheck },
-      { label: "модулей воспитания", value: previewState.educationModules.filter((module) => module.active).length, icon: BookOpenCheck },
-      { label: "направлений деятельности", value: previewState.activityDirections.length, icon: Grid3X3 },
-      { label: "планов работы", value: 12, icon: ClipboardList },
-      { label: "рабочая программа", value: "есть", icon: FileText },
-      { label: "центр проверок", value: "есть", icon: FolderCheck }
+      { label: "обучающихся", value: demoLoaded ? activeState.schoolPassport.studentsCount : "Нет данных", icon: Users },
+      { label: "классов", value: demoLoaded ? activeState.schoolPassport.classesCount : "Нет данных", icon: Boxes },
+      { label: "мероприятий", value: demoLoaded ? activeState.events.length : "Не загружено", icon: CalendarCheck },
+      { label: "модулей воспитания", value: demoLoaded ? activeState.educationModules.filter((module) => module.active).length : "Не загружено", icon: BookOpenCheck },
+      { label: "направлений деятельности", value: demoLoaded ? activeState.activityDirections.length : "Не загружено", icon: Grid3X3 },
+      { label: "планов работы", value: demoLoaded ? 12 : "Не сформировано", icon: ClipboardList },
+      { label: "рабочая программа", value: demoLoaded ? `${activeState.workProgram.progress.percent}%` : "Не сформировано", icon: FileText },
+      { label: "центр проверок", value: demoLoaded ? "готов" : "Не загружено", icon: FolderCheck }
     ],
-    [previewState]
+    [activeState, demoLoaded]
   );
 
   async function loadDemoSchool() {
@@ -216,7 +223,7 @@ export default function DemoPage() {
   return (
     <main className="-mx-4 -mb-6 bg-[radial-gradient(circle_at_top_left,_rgba(14,116,144,0.14),_transparent_34%),linear-gradient(180deg,#f8fafc_0%,#ffffff_42%,#f8fafc_100%)] px-4 py-8 text-slate-950 sm:-mx-6 sm:px-6 lg:-m-6 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-10">
-        <section className="grid min-h-[560px] items-center gap-8 py-8 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="grid min-h-[560px] items-center gap-8 py-8 xl:grid-cols-[1.1fr_0.9fr]">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-800 shadow-sm">
               <Sparkles className="h-3.5 w-3.5" />
@@ -232,19 +239,25 @@ export default function DemoPage() {
               КПВР, рабочая программа воспитания, планы по направлениям, контроль исполнения, отчеты и подготовка к
               проверкам в одной системе.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button type="button" className="h-12 px-6" onClick={loadDemoSchool} disabled={status === "loading"}>
+            <div className={ctaGridClass}>
+              <Button type="button" className={ctaButtonClass} onClick={loadDemoSchool} disabled={status === "loading"}>
                 {status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                Загрузить демо-школу
+                <span className={ctaLabelClass}>Загрузить демо</span>
               </Button>
-              <Button asChild variant="outline" className="h-12 px-6">
-                <a href="#demo-route">Посмотреть маршрут демо</a>
+              <Button asChild variant="outline" className={ctaButtonClass}>
+                <a href="#demo-route">
+                  <span className={ctaLabelClass}>Маршрут демо</span>
+                </a>
               </Button>
-              <Button asChild variant="secondary" className="h-12 px-6">
-                <Link href="/demo-showcase">Посмотреть систему за 5 минут</Link>
+              <Button asChild variant="secondary" className={ctaButtonClass}>
+                <Link href="/demo-showcase">
+                  <span className={ctaLabelClass}>Тур за 5 минут</span>
+                </Link>
               </Button>
-              <Button asChild variant="ghost" className="h-12 px-6">
-                <Link href="/">Открыть главную панель</Link>
+              <Button asChild variant="ghost" className={ctaButtonClass}>
+                <Link href="/">
+                  <span className={ctaLabelClass}>Открыть панель</span>
+                </Link>
               </Button>
             </div>
             <DemoStateNotice status={status} error={error} />
@@ -314,7 +327,7 @@ export default function DemoPage() {
           </div>
         </section>
 
-        {featuredEvent ? (
+        {demoLoaded && featuredEvent ? (
           <section className="overflow-hidden rounded-3xl border border-sky-200 bg-slate-950 text-white shadow-2xl shadow-slate-300/70">
             <div className="grid gap-0 xl:grid-cols-[0.9fr_1.1fr]">
               <div className="border-b border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.25),_transparent_36%)] p-6 sm:p-8 xl:border-b-0 xl:border-r">
@@ -434,7 +447,15 @@ export default function DemoPage() {
               </div>
             </div>
           </section>
-        ) : null}
+        ) : (
+          <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center shadow-sm sm:p-8">
+            <FileText className="mx-auto h-10 w-10 text-slate-400" />
+            <h2 className="mt-3 text-2xl font-semibold tracking-normal">Демо-школа не загружена</h2>
+            <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              Нет данных для демонстрации связей. Нажмите «Загрузить демо», чтобы увидеть мероприятие, КПВР, планы, отчеты и проверки как единую систему.
+            </p>
+          </section>
+        )}
 
         <section id="demo-route" className="scroll-mt-6">
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -497,15 +518,19 @@ export default function DemoPage() {
                 Начните с демо-школы, затем откройте главную панель и замените данные на свою школу.
               </p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button type="button" variant="secondary" className="h-12 px-6" onClick={loadDemoSchool} disabled={status === "loading"}>
-                Попробовать демо-школу
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <Button type="button" variant="secondary" className={ctaButtonClass} onClick={loadDemoSchool} disabled={status === "loading"}>
+                <span className={ctaLabelClass}>Попробовать демо-школу</span>
               </Button>
-              <Button asChild variant="outline" className="h-12 border-white/30 bg-transparent px-6 text-white hover:bg-white/10 hover:text-white">
-                <Link href="/school-passport">Запросить адаптацию</Link>
+              <Button asChild variant="outline" className={`${ctaButtonClass} border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white`}>
+                <Link href="/school-passport">
+                  <span className={ctaLabelClass}>Запросить адаптацию</span>
+                </Link>
               </Button>
-              <Button asChild variant="ghost" className="h-12 px-6 text-white hover:bg-white/10 hover:text-white">
-                <Link href="/">Открыть главную панель</Link>
+              <Button asChild variant="ghost" className={`${ctaButtonClass} text-white hover:bg-white/10 hover:text-white`}>
+                <Link href="/">
+                  <span className={ctaLabelClass}>Открыть главную панель</span>
+                </Link>
               </Button>
             </div>
           </div>

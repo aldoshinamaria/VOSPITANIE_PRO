@@ -50,7 +50,14 @@ run("no completed events creates reporting risk", () => {
   const report = builder.build({
     state: {
       ...state,
-      events: state.events.map((event) => ({ ...event, status: "planned" }))
+      events: state.events.map((event) => ({ ...event, status: "planned" })),
+      eventExecutions: state.eventExecutions.map((execution) => ({
+        ...execution,
+        status: "planned",
+        progress: { ...execution.progress, percent: 25 },
+        confirmed: false,
+        confirmedAt: ""
+      }))
     },
     filter: { directionId: "all", periodMode: "academicYear" }
   });

@@ -5,13 +5,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 
-import { navItems } from "@/components/app/nav-items";
+import { useAppState } from "@/components/app/app-provider";
+import { getNavItemsForMode } from "@/components/app/nav-items";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { mode } = useAppState();
   const [isOpen, setIsOpen] = React.useState(false);
-  const groupedItems = navItems.reduce(
+  const [hasMounted, setHasMounted] = React.useState(false);
+  const effectiveMode = pathname?.startsWith("/demo") ? "demo" : pathname === "/" ? "work" : mode;
+  const visibleNavItems = React.useMemo(() => (hasMounted ? getNavItemsForMode(effectiveMode) : []), [effectiveMode, hasMounted]);
+  const homeHref = effectiveMode === "demo" ? "/demo" : "/";
+  const groupedItems = visibleNavItems.reduce(
     (groups, item) => {
       const group = groups.find((current) => current.title === item.group);
 
@@ -23,12 +29,16 @@ export function Sidebar() {
 
       return groups;
     },
-    [] as { title: (typeof navItems)[number]["group"]; items: (typeof navItems)[number][] }[]
+    [] as { title: (typeof visibleNavItems)[number]["group"]; items: (typeof visibleNavItems)[number][] }[]
   );
 
   React.useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
+
+  React.useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   React.useEffect(() => {
     if (!isOpen) return;
@@ -53,7 +63,7 @@ export function Sidebar() {
   return (
     <>
       <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b bg-slate-950 px-4 text-white shadow-sm lg:hidden">
-        <Link href="/" className="min-w-0">
+        <Link href={homeHref} className="min-w-0">
           <div className="truncate text-base font-semibold tracking-normal">Воспитание.PRO</div>
           <div className="truncate text-xs text-slate-300">Рабочее место заместителя директора</div>
         </Link>
@@ -85,7 +95,7 @@ export function Sidebar() {
         )}
       >
         <div className="flex items-start justify-between gap-3 border-b border-white/10 px-5 py-5">
-          <Link href="/" className="min-w-0">
+          <Link href={homeHref} className="min-w-0">
             <div className="truncate text-lg font-semibold tracking-normal">Воспитание.PRO</div>
             <div className="mt-1 truncate text-sm text-slate-300">Рабочее место заместителя директора</div>
           </Link>
@@ -127,7 +137,7 @@ export function Sidebar() {
           ))}
         </nav>
         <div className="border-t border-white/10 p-4 text-xs text-slate-400">
-          Данные демо сохраняются в этом браузере
+          {effectiveMode === "demo" ? "Демо-данные изолированы от рабочей школы" : "Рабочие данные сохраняются отдельно от демо"}
         </div>
       </aside>
     </>

@@ -1,5 +1,19 @@
 # ROADMAP: Воспитание.PRO
 
+## Update: Stage 17.7.7 Demo Mode as a Live School
+
+- [x] Demo Mode now loads a realistic urban school from Kaluga region for the 2025/2026 academic year.
+- [x] Demo data includes 824 students, 33 classes, 36 events, 16 upbringing modules, 10 associations, 7 infrastructure objects, 12 partner records and 7 extracurricular programs.
+- [x] KPVR, activity plans, activity reports, event execution and work program use the same generated demo state instead of separate hand-written demo documents.
+- [x] The `/demo` page shows clear empty states before demo loading and avoids zero KPI blocks.
+- [x] Work Mode remains isolated from Demo Mode and continues to use independent work-state storage.
+
+Next steps:
+
+- [ ] Restart the local Next.js dev server before a live presentation if an old process still serves stale 500 responses.
+- [ ] Add e2e smoke tests for `/demo`, `/educational-system`, `/kpvr`, `/work-program` and `/activity-reports`.
+- [ ] Prepare the public Vercel demonstration flow.
+
 Документ фиксирует ход разработки MVP. После каждого крупного изменения сюда нужно вносить:
 
 - выполненные задачи;

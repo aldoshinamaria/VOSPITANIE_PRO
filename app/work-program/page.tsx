@@ -1,6 +1,7 @@
 "use client";
 
-import { Download, FileText, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, Circle, Download, FileText, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { useAppState } from "@/components/app/app-provider";
@@ -15,6 +16,7 @@ import { createWorkProgramAssembler } from "@/lib/domain/work-program/work-progr
 import { buildWorkProgramDocxBlob, buildWorkProgramPrintHtml, getWorkProgramDocxFileName } from "@/lib/domain/work-program/work-program-export";
 import { createId } from "@/lib/utils";
 import type {
+  AppState,
   GeneratedParagraph,
   SchoolCultureSubsectionId,
   WorkProgram,
@@ -34,6 +36,8 @@ export default function WorkProgramPage() {
   const [activeSubsectionId, setActiveSubsectionId] = React.useState<SchoolCultureSubsectionId>("school-profile");
   const [selectedVersionId, setSelectedVersionId] = React.useState("");
   const [message, setMessage] = React.useState<string | null>(null);
+  const inputReadiness = React.useMemo(() => checkWorkProgramInputReadiness(state), [state]);
+  const canShowProgram = inputReadiness.items.every((item) => item.done);
 
   const activeSection = program.sections.find((section) => section.id === activeSectionId) ?? program.sections[0];
   const activeCultureSubsection = program.schoolCulture.subsections.find((subsection) => subsection.id === activeSubsectionId);
@@ -217,19 +221,19 @@ export default function WorkProgramPage() {
         description="Центральный документ системы: программа собирается из паспорта школы, воспитательной системы, модулей, мероприятий, КПВР и внеурочной деятельности."
         actions={
           <>
-            <Button variant="outline" onClick={rebuildSelectedSection} disabled={isSaving || !activeSection}>
+            <Button variant="outline" onClick={rebuildSelectedSection} disabled={isSaving || !activeSection || !canShowProgram}>
               <RefreshCw className="h-4 w-4" />
               Раздел
             </Button>
-            <Button variant="outline" onClick={rebuildFullProgram} disabled={isSaving}>
+            <Button variant="outline" onClick={rebuildFullProgram} disabled={isSaving || !canShowProgram}>
               <RefreshCw className="h-4 w-4" />
               Программа
             </Button>
-            <Button variant="outline" onClick={exportPdf}>
+            <Button variant="outline" onClick={exportPdf} disabled={!canShowProgram}>
               <FileText className="h-4 w-4" />
               PDF
             </Button>
-            <Button onClick={exportDocx}>
+            <Button onClick={exportDocx} disabled={!canShowProgram}>
               <Download className="h-4 w-4" />
               DOCX
             </Button>
@@ -238,6 +242,11 @@ export default function WorkProgramPage() {
       />
 
       {message ? <div className="mb-5 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</div> : null}
+
+      {!canShowProgram ? (
+        <WorkProgramReadinessScreen readiness={inputReadiness} />
+      ) : (
+        <>
 
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCardLike title="Готовность программы" value={`${program.progress.percent}%`} />
@@ -405,8 +414,155 @@ export default function WorkProgramPage() {
           )}
         </CardContent>
       </Card>
+        </>
+      )}
     </>
   );
+}
+
+interface WorkProgramInputReadinessItem {
+  id: string;
+  title: string;
+  description: string;
+  href: string;
+  action: string;
+  done: boolean;
+}
+
+interface WorkProgramInputReadiness {
+  percent: number;
+  items: WorkProgramInputReadinessItem[];
+}
+
+function WorkProgramReadinessScreen({ readiness }: { readiness: WorkProgramInputReadiness }) {
+  const missingItems = readiness.items.filter((item) => !item.done);
+
+  return (
+    <Card className="border-amber-200 bg-amber-50">
+      <CardHeader>
+        <CardTitle>Рабочая программа пока не сформирована</CardTitle>
+        <CardDescription>
+          Система не показывает шаблон как готовый документ. Сначала заполните обязательные данные школы, затем программа будет собрана из реальных источников.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-5">
+        <div className="rounded-md border border-amber-200 bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-sm text-muted-foreground">Готовность исходных данных</div>
+              <div className="mt-1 text-3xl font-semibold">{readiness.percent}%</div>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Не хватает данных: {missingItems.length}
+            </div>
+          </div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-amber-600" style={{ width: `${readiness.percent}%` }} />
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {readiness.items.map((item) => {
+            const Icon = item.done ? CheckCircle2 : Circle;
+
+            return (
+              <div key={item.id} className="rounded-md border bg-white p-4">
+                <div className="flex items-start gap-3">
+                  <Icon className={item.done ? "mt-0.5 h-5 w-5 text-emerald-700" : "mt-0.5 h-5 w-5 text-slate-400"} />
+                  <div>
+                    <div className="font-medium">{item.title}</div>
+                    <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.description}</p>
+                  </div>
+                </div>
+                <Button asChild variant="outline" className="mt-4 w-full justify-start">
+                  <Link href={item.href}>{item.action}</Link>
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function checkWorkProgramInputReadiness(state: AppState): WorkProgramInputReadiness {
+  const passport = state.schoolPassport;
+  const hasPassport = Boolean(
+    passport.name &&
+      passport.region &&
+      passport.municipality &&
+      passport.address &&
+      passport.principal &&
+      passport.deputyDirector &&
+      passport.studentsCount > 0 &&
+      passport.classesCount > 0
+  );
+  const hasInfrastructure = state.educationalSystem.infrastructureObjects.length > 0 || Object.values(passport.infrastructure).some(Boolean);
+  const hasAssociations = state.educationalSystem.associations.some((association) => association.status === "active");
+  const hasEducationalSystem = hasInfrastructure || hasAssociations;
+  const hasPartners = state.schoolPassport.socialPartners.length + state.educationalSystem.partners.length > 0;
+  const hasEvents = state.events.length > 0;
+  const hasExtraActivities = state.extraActivities.length > 0;
+  const hasKpvrData =
+    hasEvents &&
+    state.events.every((event) => event.title && event.moduleId && event.startDate && event.responsible && event.educationLevels.length > 0);
+
+  const items: WorkProgramInputReadinessItem[] = [
+    {
+      id: "passport",
+      title: "Паспорт школы",
+      description: hasPassport ? "Основные сведения заполнены." : "Заполните название, регион, адрес, руководство, учебный год и контингент.",
+      href: "/school-passport",
+      action: "Открыть паспорт",
+      done: hasPassport
+    },
+    {
+      id: "educational-system",
+      title: "Воспитательная система",
+      description: hasEducationalSystem ? "Есть объединения или инфраструктура." : "Добавьте объединения, музей, ЦДИ, медиацентр или другие ресурсы.",
+      href: "/educational-system",
+      action: "Открыть систему",
+      done: hasEducationalSystem
+    },
+    {
+      id: "partners",
+      title: "Социальные партнеры",
+      description: hasPartners ? "Партнеры добавлены." : "Добавьте хотя бы одного партнера в паспорт школы или воспитательную систему.",
+      href: "/school-passport",
+      action: "Добавить партнеров",
+      done: hasPartners
+    },
+    {
+      id: "events",
+      title: "Мероприятия",
+      description: hasEvents ? "Реестр содержит мероприятия." : "Добавьте мероприятия, которые станут источником КПВР и традиций школы.",
+      href: "/events",
+      action: "Открыть мероприятия",
+      done: hasEvents
+    },
+    {
+      id: "extra-activities",
+      title: "Внеурочная деятельность",
+      description: hasExtraActivities ? "Программы внеурочной деятельности добавлены." : "Добавьте курсы или программы дополнительного образования.",
+      href: "/extra-activities",
+      action: "Открыть внеурочную деятельность",
+      done: hasExtraActivities
+    },
+    {
+      id: "kpvr",
+      title: "КПВР",
+      description: hasKpvrData ? "Данных достаточно для КПВР." : "Проверьте, что у мероприятий есть модуль, дата, ответственный и уровень образования.",
+      href: "/kpvr",
+      action: "Открыть КПВР",
+      done: hasKpvrData
+    }
+  ];
+
+  return {
+    items,
+    percent: Math.round((items.filter((item) => item.done).length / items.length) * 100)
+  };
 }
 
 function MetricCardLike({ title, value }: { title: string; value: string | number }) {

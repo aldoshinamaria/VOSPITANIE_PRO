@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "tsc -p tsconfig.test.json && node -r ./tests/register-paths.cjs ./.test-build/tests/work-program-compliance-checker.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/activity-report-builder.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/event-execution.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/inspection-center.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/app-mode-storage.test.js"
+    "test": "tsc -p tsconfig.test.json && node -r ./tests/register-paths.cjs ./.test-build/tests/work-program-compliance-checker.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/activity-report-builder.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/event-execution.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/inspection-center.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/app-mode-storage.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/nav-items.test.js"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",
