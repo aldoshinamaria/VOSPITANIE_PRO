@@ -1,5 +1,6 @@
 import { mockAppState } from "@/data/mock-data";
 import { migrateEventDirectionRelations, standardActivityDirections } from "@/lib/domain/activity-directions";
+import { createEmptySchoolState } from "@/lib/domain/empty-school-state";
 import { migrateEventExecutions } from "@/lib/domain/event-execution";
 import { createWorkProgramAssembler } from "@/lib/domain/work-program/work-program-assembler";
 import type {
@@ -51,58 +52,7 @@ export function createDemoSchoolFactory(): DemoSchoolFactory {
 
 class RuleBasedDemoSchoolFactory implements DemoSchoolFactory {
   createEmptySchool(): AppState {
-    const now = new Date().toISOString();
-    const state: AppState = {
-      ...mockAppState,
-      schoolPassport: {
-        id: "school-empty",
-        name: "",
-        region: "",
-        municipality: "",
-        address: "",
-        principal: "",
-        deputyDirector: "",
-        academicYear: "2026/2027",
-        studentsCount: 0,
-        classesCount: 0,
-        infrastructure: {
-          museum: false,
-          mediaCenter: false,
-          theater: false,
-          sportsClub: false,
-          volunteerTeam: false,
-          yuid: false,
-          firstMovement: false,
-          eagletsOfRussia: false,
-          childInitiativesCenter: false,
-          schoolParliament: false
-        },
-        socialPartners: [],
-        updatedAt: now
-      },
-      activityDirections: standardActivityDirections,
-      eventDirectionRelations: [],
-      eventExecutions: [],
-      events: [],
-      kpvr: [],
-      extraActivities: [],
-      educationalSystem: {
-        associations: [],
-        infrastructureObjects: [],
-        partners: []
-      },
-      importedDocuments: [],
-      extractedEvents: [],
-      normativeDocuments: [],
-      processedDocuments: [],
-      documentProcessingLogs: [],
-      complianceCheckHistory: []
-    };
-
-    return {
-      ...state,
-      workProgram: createWorkProgramAssembler().assemble(state)
-    };
+    return createEmptySchoolState();
   }
 
   createDemoSchool(template: DemoSchoolTemplateId = "urban"): AppState {

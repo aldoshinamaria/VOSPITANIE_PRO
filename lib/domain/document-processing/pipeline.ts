@@ -1,3 +1,4 @@
+import type { AppMode } from "@/types/app-mode";
 import type { DocumentSourceType } from "@/types/document-processing";
 import type {
   DocumentAnalysisPreparation,
@@ -113,9 +114,9 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
   }
 }
 
-export function createDocumentProcessingPipeline(): DocumentProcessingPipeline {
+export function createDocumentProcessingPipeline(mode: AppMode = "work"): DocumentProcessingPipeline {
   return new DefaultDocumentProcessingPipeline(
-    new BrowserDocumentStorageLayer(),
+    new BrowserDocumentStorageLayer(mode),
     new CompositeDocumentTextExtractor([new DocxTextExtractor(), new PdfTextExtractor(), new XlsxTextExtractor()]),
     new RuleBasedDocumentStructureExtractor(),
     new DefaultDocumentNormalizer(),

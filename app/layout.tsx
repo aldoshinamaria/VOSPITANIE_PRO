@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { AppProvider } from "@/components/app/app-provider";
 import { PageShell } from "@/components/app/page-shell";
-import { mockAppState } from "@/data/mock-data";
+import { createEmptySchoolState } from "@/lib/domain/empty-school-state";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,7 +14,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="ru">
       <body>
-        <AppProvider initialState={mockAppState}>
+        <AppProvider initialState={createEmptySchoolState()}>
           <PageShell>{children}</PageShell>
         </AppProvider>
       </body>

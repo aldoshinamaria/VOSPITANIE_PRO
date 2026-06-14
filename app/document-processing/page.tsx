@@ -39,8 +39,8 @@ const validationLabels: Record<DocumentValidationStatus, string> = {
 };
 
 export default function DocumentProcessingPage() {
-  const { state, updateState, isSaving } = useAppState();
-  const pipeline = React.useMemo(() => createDocumentProcessingPipeline(), []);
+  const { mode, state, updateState, isSaving } = useAppState();
+  const pipeline = React.useMemo(() => createDocumentProcessingPipeline(mode), [mode]);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [sourceType, setSourceType] = React.useState<DocumentSourceType>("import");
   const [isProcessing, setIsProcessing] = React.useState(false);

@@ -1,15 +1,20 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 
-import { createLocalStorageDataAccess, createSupabaseDataAccess } from "@/lib/data-access";
+import { createModeAwareDataAccess } from "@/lib/data-access/mode-aware-data-access";
+import { APP_MODE_STORAGE_KEY } from "@/lib/data-access/storage-keys";
+import type { AppMode } from "@/types/app-mode";
 import type { AppState } from "@/types/domain";
 
 interface AppContextValue {
+  mode: AppMode;
   state: AppState;
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
+  switchMode: (mode: AppMode) => Promise<void>;
   updateState: (updater: (current: AppState) => AppState) => Promise<void>;
   resetState: () => Promise<void>;
   clearError: () => void;
@@ -18,13 +23,11 @@ interface AppContextValue {
 const AppContext = React.createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children, initialState }: { children: React.ReactNode; initialState: AppState }) {
-  const dataAccess = React.useMemo(() => {
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      return createSupabaseDataAccess();
-    }
-
-    return createLocalStorageDataAccess();
-  }, []);
+  const pathname = usePathname();
+  const [mode, setMode] = React.useState<AppMode>(() =>
+    resolveMode(typeof window === "undefined" ? null : window.location.pathname)
+  );
+  const dataAccess = React.useMemo(() => createModeAwareDataAccess(mode, initialState), [initialState, mode]);
   const [state, setState] = React.useState<AppState>(initialState);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -37,8 +40,25 @@ export function AppProvider({ children, initialState }: { children: React.ReactN
   }, [state]);
 
   React.useEffect(() => {
+    const nextMode = resolveMode(pathname);
+
+    setMode((currentMode) => {
+      if (currentMode === nextMode) {
+        return currentMode;
+      }
+
+      return nextMode;
+    });
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(APP_MODE_STORAGE_KEY, nextMode);
+    }
+  }, [pathname]);
+
+  React.useEffect(() => {
     let mounted = true;
 
+    setIsLoading(true);
     Promise.resolve(dataAccess.getState())
       .then((nextState) => {
         if (mounted) {
@@ -62,6 +82,17 @@ export function AppProvider({ children, initialState }: { children: React.ReactN
       mounted = false;
     };
   }, [dataAccess]);
+
+  const switchMode = React.useCallback(
+    async (nextMode: AppMode) => {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(APP_MODE_STORAGE_KEY, nextMode);
+      }
+
+      setMode(nextMode);
+    },
+    []
+  );
 
   const updateState = React.useCallback(
     async (updater: (current: AppState) => AppState) => {
@@ -116,7 +147,7 @@ export function AppProvider({ children, initialState }: { children: React.ReactN
   }, []);
 
   return (
-    <AppContext.Provider value={{ state, isLoading, isSaving, error, updateState, resetState, clearError }}>
+    <AppContext.Provider value={{ mode, state, isLoading, isSaving, error, switchMode, updateState, resetState, clearError }}>
       {children}
     </AppContext.Provider>
   );
@@ -138,4 +169,20 @@ function getErrorMessage(error: unknown) {
   }
 
   return "Не удалось выполнить операцию с Supabase.";
+}
+
+function resolveMode(pathname: string | null): AppMode {
+  if (pathname === "/" || pathname === "") {
+    return "work";
+  }
+
+  if (pathname?.startsWith("/demo")) {
+    return "demo";
+  }
+
+  if (typeof window === "undefined") {
+    return "work";
+  }
+
+  return window.localStorage.getItem(APP_MODE_STORAGE_KEY) === "demo" ? "demo" : "work";
 }

@@ -3,6 +3,7 @@ import { migrateEventDirectionRelations, standardActivityDirections } from "@/li
 import { migrateEventExecutions } from "@/lib/domain/event-execution";
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
 import { findModuleIdByTitle } from "@/lib/domain/modules";
+import { WORK_STATE_STORAGE_KEY } from "@/lib/data-access/storage-keys";
 import type {
   AppState,
   EducationLevel,
@@ -22,26 +23,31 @@ export interface AppRepository {
   reset(): AppState;
 }
 
-const STORAGE_KEY = "vospitanie-pro:app-state";
+const LEGACY_STORAGE_KEY = "vospitanie-pro:app-state";
 
 export class LocalStorageAppRepository implements AppRepository {
+  constructor(
+    private readonly storageKey = LEGACY_STORAGE_KEY,
+    private readonly fallbackState: AppState = mockAppState
+  ) {}
+
   getState(): AppState {
     if (typeof window === "undefined") {
-      return mockAppState;
+      return this.fallbackState;
     }
 
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(this.storageKey);
 
     if (!raw) {
-      this.saveState(mockAppState);
-      return mockAppState;
+      this.saveState(this.fallbackState);
+      return this.fallbackState;
     }
 
     try {
-      return migrateState(JSON.parse(raw) as Partial<AppState>);
+      return migrateState(JSON.parse(raw) as Partial<AppState>, this.fallbackState);
     } catch {
-      this.saveState(mockAppState);
-      return mockAppState;
+      this.saveState(this.fallbackState);
+      return this.fallbackState;
     }
   }
 
@@ -50,12 +56,12 @@ export class LocalStorageAppRepository implements AppRepository {
       return;
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(this.storageKey, JSON.stringify(state));
   }
 
   reset() {
-    this.saveState(mockAppState);
-    return mockAppState;
+    this.saveState(this.fallbackState);
+    return this.fallbackState;
   }
 }
 
@@ -63,39 +69,47 @@ export function createAppRepository(): AppRepository {
   return new LocalStorageAppRepository();
 }
 
-function migrateState(state: Partial<AppState>): AppState {
+export function createWorkAppRepository(fallbackState: AppState): AppRepository {
+  return new LocalStorageAppRepository(WORK_STATE_STORAGE_KEY, fallbackState);
+}
+
+export function createNamespacedAppRepository(storageKey: string, fallbackState: AppState): AppRepository {
+  return new LocalStorageAppRepository(storageKey, fallbackState);
+}
+
+export function migrateState(state: Partial<AppState>, fallbackState: AppState = mockAppState): AppState {
   const migratedState = {
-    ...mockAppState,
+    ...fallbackState,
     ...state,
-    schoolPassport: migrateSchoolPassport(state.schoolPassport),
-    educationModules: migrateEducationModules(state.educationModules),
+    schoolPassport: migrateSchoolPassport(state.schoolPassport, fallbackState),
+    educationModules: migrateEducationModules(state.educationModules, fallbackState),
     activityDirections: migrateActivityDirections(state.activityDirections),
-    events: Array.isArray(state.events) ? state.events.map(migrateEvent) : mockAppState.events,
-    kpvr: Array.isArray(state.kpvr) ? state.kpvr.map(migrateKpvrItem) : mockAppState.kpvr,
+    events: Array.isArray(state.events) ? state.events.map((event) => migrateEvent(event, fallbackState)) : fallbackState.events,
+    kpvr: Array.isArray(state.kpvr) ? state.kpvr.map((item) => migrateKpvrItem(item, fallbackState)) : fallbackState.kpvr,
     extraActivities: Array.isArray(state.extraActivities)
-      ? state.extraActivities.map(migrateExtraActivity)
-      : mockAppState.extraActivities,
+      ? state.extraActivities.map((activity, index) => migrateExtraActivity(activity, index, fallbackState))
+      : fallbackState.extraActivities,
     educationalSystem: {
       associations: Array.isArray(state.educationalSystem?.associations)
         ? state.educationalSystem.associations
-        : mockAppState.educationalSystem.associations,
+        : fallbackState.educationalSystem.associations,
       infrastructureObjects: Array.isArray(state.educationalSystem?.infrastructureObjects)
         ? state.educationalSystem.infrastructureObjects
-        : mockAppState.educationalSystem.infrastructureObjects,
+        : fallbackState.educationalSystem.infrastructureObjects,
       partners: Array.isArray(state.educationalSystem?.partners)
         ? state.educationalSystem.partners
-        : mockAppState.educationalSystem.partners
+        : fallbackState.educationalSystem.partners
     },
-    importedDocuments: Array.isArray(state.importedDocuments) ? state.importedDocuments : mockAppState.importedDocuments,
-    extractedEvents: Array.isArray(state.extractedEvents) ? state.extractedEvents : mockAppState.extractedEvents,
-    normativeDocuments: Array.isArray(state.normativeDocuments) ? state.normativeDocuments : mockAppState.normativeDocuments,
-    processedDocuments: Array.isArray(state.processedDocuments) ? state.processedDocuments : mockAppState.processedDocuments,
+    importedDocuments: Array.isArray(state.importedDocuments) ? state.importedDocuments : fallbackState.importedDocuments,
+    extractedEvents: Array.isArray(state.extractedEvents) ? state.extractedEvents : fallbackState.extractedEvents,
+    normativeDocuments: Array.isArray(state.normativeDocuments) ? state.normativeDocuments : fallbackState.normativeDocuments,
+    processedDocuments: Array.isArray(state.processedDocuments) ? state.processedDocuments : fallbackState.processedDocuments,
     documentProcessingLogs: Array.isArray(state.documentProcessingLogs)
       ? state.documentProcessingLogs
-      : mockAppState.documentProcessingLogs,
-    workProgram: mockAppState.workProgram,
-    complianceCheckHistory: Array.isArray(state.complianceCheckHistory) ? state.complianceCheckHistory : mockAppState.complianceCheckHistory,
-    exportDocuments: migrateExportDocuments(state.exportDocuments)
+      : fallbackState.documentProcessingLogs,
+    workProgram: fallbackState.workProgram,
+    complianceCheckHistory: Array.isArray(state.complianceCheckHistory) ? state.complianceCheckHistory : fallbackState.complianceCheckHistory,
+    exportDocuments: migrateExportDocuments(state.exportDocuments, fallbackState)
   };
 
   return {
@@ -133,20 +147,20 @@ function isCurrentWorkProgram(program?: Partial<WorkProgram>): program is WorkPr
   );
 }
 
-function migrateSchoolPassport(passport?: Partial<SchoolPassport>): SchoolPassport {
+function migrateSchoolPassport(passport: Partial<SchoolPassport> | undefined, fallbackState: AppState): SchoolPassport {
   const partners = passport?.socialPartners;
 
   return {
-    ...mockAppState.schoolPassport,
+    ...fallbackState.schoolPassport,
     ...passport,
-    academicYear: passport?.academicYear ?? mockAppState.schoolPassport.academicYear,
+    academicYear: passport?.academicYear ?? fallbackState.schoolPassport.academicYear,
     infrastructure: {
-      ...mockAppState.schoolPassport.infrastructure,
+      ...fallbackState.schoolPassport.infrastructure,
       ...passport?.infrastructure
     },
     socialPartners: Array.isArray(partners)
       ? partners.map((partner, index) => normalizePartner(partner, index))
-      : mockAppState.schoolPassport.socialPartners
+      : fallbackState.schoolPassport.socialPartners
   };
 }
 
@@ -168,13 +182,13 @@ function normalizePartner(partner: SocialPartner | string, index: number): Socia
   };
 }
 
-function migrateEducationModules(modules?: EducationModule[]) {
+function migrateEducationModules(modules: EducationModule[] | undefined, fallbackState: AppState) {
   if (!Array.isArray(modules) || modules.length === 0) {
-    return mockAppState.educationModules;
+    return fallbackState.educationModules;
   }
 
   const existingIds = new Set(modules.map((educationModule) => educationModule.id));
-  const missingStandardModules = mockAppState.educationModules.filter(
+  const missingStandardModules = fallbackState.educationModules.filter(
     (educationModule) => !existingIds.has(educationModule.id)
   );
 
@@ -187,17 +201,19 @@ function migrateEvent(
     participants?: string;
     direction?: string;
     status?: string;
-  }
+  },
+  fallbackState: AppState
 ): SchoolEvent {
-  const startDate = event.startDate ?? event.date ?? mockAppState.events[0].startDate;
-  const moduleId = event.moduleId ?? findModuleIdByTitle(mockAppState.educationModules, event.direction);
+  const fallbackEvent = fallbackState.events[0] ?? mockAppState.events[0];
+  const startDate = event.startDate ?? event.date ?? fallbackEvent.startDate;
+  const moduleId = event.moduleId ?? findModuleIdByTitle(fallbackState.educationModules, event.direction);
 
   return {
-    ...mockAppState.events[0],
+    ...fallbackEvent,
     ...event,
     moduleId,
     description: event.description ?? "",
-    direction: event.direction ?? findModuleTitle(moduleId),
+    direction: event.direction ?? findModuleTitle(moduleId, fallbackState),
     educationLevels: normalizeEducationLevels(event.educationLevels),
     classes: event.classes ?? event.participants ?? "",
     startDate,
@@ -215,24 +231,26 @@ function migrateEvent(
   };
 }
 
-function migrateKpvrItem(item: Partial<KpvrItem>): KpvrItem {
+function migrateKpvrItem(item: Partial<KpvrItem>, fallbackState: AppState): KpvrItem {
+  const fallbackItem = fallbackState.kpvr[0] ?? mockAppState.kpvr[0];
+
   if (item.moduleId) {
     return {
-      ...mockAppState.kpvr[0],
+      ...fallbackItem,
       ...item,
       moduleId: item.moduleId
     };
   }
 
   return {
-    ...mockAppState.kpvr[0],
+    ...fallbackItem,
     ...item,
-    moduleId: findModuleIdByTitle(mockAppState.educationModules, item.module)
+    moduleId: findModuleIdByTitle(fallbackState.educationModules, item.module)
   };
 }
 
-function migrateExtraActivity(activity: Partial<ExtraActivity>, index: number): ExtraActivity {
-  const fallback = mockAppState.extraActivities[index] ?? mockAppState.extraActivities[0];
+function migrateExtraActivity(activity: Partial<ExtraActivity>, index: number, fallbackState: AppState): ExtraActivity {
+  const fallback = fallbackState.extraActivities[index] ?? mockAppState.extraActivities[0];
 
   return {
     ...fallback,
@@ -248,13 +266,13 @@ function migrateExtraActivity(activity: Partial<ExtraActivity>, index: number): 
   };
 }
 
-function migrateExportDocuments(documents?: AppState["exportDocuments"]) {
+function migrateExportDocuments(documents: AppState["exportDocuments"] | undefined, fallbackState: AppState) {
   if (!Array.isArray(documents) || documents.length === 0) {
-    return mockAppState.exportDocuments;
+    return fallbackState.exportDocuments;
   }
 
   const existingIds = new Set(documents.map((document) => document.id));
-  const missingDocuments = mockAppState.exportDocuments.filter((document) => !existingIds.has(document.id));
+  const missingDocuments = fallbackState.exportDocuments.filter((document) => !existingIds.has(document.id));
 
   return [...documents, ...missingDocuments].map((document) => ({
     ...document,
@@ -290,6 +308,6 @@ function getMonthFromDate(value: string) {
   return Number.isNaN(date.getTime()) ? 1 : date.getMonth() + 1;
 }
 
-function findModuleTitle(moduleId: string) {
-  return mockAppState.educationModules.find((educationModule) => educationModule.id === moduleId)?.title ?? "";
+function findModuleTitle(moduleId: string, fallbackState: AppState) {
+  return fallbackState.educationModules.find((educationModule) => educationModule.id === moduleId)?.title ?? "";
 }

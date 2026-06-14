@@ -19,6 +19,7 @@ import * as React from "react";
 import { useAppState } from "@/components/app/app-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DEMO_LOADED_AT_STORAGE_KEY } from "@/lib/data-access/storage-keys";
 import { createDemoSchoolFactory } from "@/lib/domain/demo-school-factory";
 import { formatRuDate } from "@/lib/utils";
 
@@ -64,6 +65,7 @@ export default function DemoShowcasePage() {
 
   async function loadDemo() {
     await updateState(() => factory.createDemoSchool("urban"));
+    window.localStorage.setItem(DEMO_LOADED_AT_STORAGE_KEY, new Date().toISOString());
     setLoaded(true);
   }
 

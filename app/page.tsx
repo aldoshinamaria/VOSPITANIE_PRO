@@ -21,9 +21,7 @@ import { EventStatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createDemoSchoolFactory } from "@/lib/domain/demo-school-factory";
 import { formatRuDate } from "@/lib/utils";
-import type { DemoSchoolTemplateId } from "@/types/domain";
 
 const firstPriorityHints = [
   {
@@ -44,18 +42,13 @@ const firstPriorityHints = [
 ];
 
 export default function DashboardPage() {
-  const { state, updateState, isSaving } = useAppState();
-  const factory = React.useMemo(() => createDemoSchoolFactory(), []);
-  const isEmpty = factory.isEmpty(state);
+  const { state } = useAppState();
+  const isEmpty =
+    !state.schoolPassport.name &&
+    state.events.length === 0 &&
+    state.educationalSystem.associations.length === 0 &&
+    state.normativeDocuments.length === 0;
   const activeModulesCount = state.educationModules.filter((module) => module.active).length;
-
-  async function loadDemo(template?: DemoSchoolTemplateId) {
-    await updateState(() => factory.createDemoSchool(template));
-  }
-
-  async function resetDemoData() {
-    await updateState(() => factory.createEmptySchool());
-  }
 
   return (
     <>
@@ -70,10 +63,6 @@ export default function DashboardPage() {
 
       <FirstLaunchWizard
         isEmpty={isEmpty}
-        isSaving={isSaving}
-        templates={factory.listTemplates()}
-        onCreateOwn={resetDemoData}
-        onLoadDemo={loadDemo}
       />
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -158,7 +147,7 @@ export default function DashboardPage() {
                 {state.events.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                      Мероприятий пока нет. Загрузите демо-школу или добавьте первое мероприятие.
+                      Мероприятий пока нет. Добавьте первое мероприятие в рабочем режиме.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -217,18 +206,18 @@ export default function DashboardPage() {
 }
 
 function FirstLaunchWizard({
-  isEmpty,
-  isSaving,
-  templates,
-  onCreateOwn,
-  onLoadDemo
+  isEmpty
 }: {
   isEmpty: boolean;
-  isSaving: boolean;
-  templates: ReturnType<ReturnType<typeof createDemoSchoolFactory>["listTemplates"]>;
-  onCreateOwn: () => Promise<void>;
-  onLoadDemo: (template?: DemoSchoolTemplateId) => Promise<void>;
 }) {
+  const steps = [
+    { title: "1. Загрузите документы", description: "Добавьте федеральные, региональные или школьные документы для будущего анализа.", href: "/import-documents" },
+    { title: "2. Проверьте анализ", description: "Проверьте качество извлечения текста и структуры в документном движке.", href: "/document-processing" },
+    { title: "3. Заполните паспорт школы", description: "Внесите официальные сведения, инфраструктуру и социальных партнеров.", href: "/school-passport" },
+    { title: "4. Сформируйте рабочую программу", description: "Соберите программу воспитания из данных школы и проверьте готовность разделов.", href: "/work-program" },
+    { title: "5. Сформируйте КПВР", description: "Добавьте мероприятия и получите календарный план по уровням образования.", href: "/kpvr" }
+  ];
+
   return (
     <Card className={isEmpty ? "border-sky-200 bg-sky-50" : "bg-white"}>
       <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
@@ -239,37 +228,27 @@ function FirstLaunchWizard({
           </CardTitle>
           <CardDescription>
             {isEmpty
-              ? "Выберите: начать с чистой школы или загрузить готовый пример."
-              : "Можно быстро переключиться на демо-школу, шаблон школы или сбросить демо-данные."}
+              ? "Рабочий режим открыт с чистой школой. Демо-данные находятся только в разделе «Демо»."
+              : "Продолжайте заполнять рабочие данные школы. Демо-режим не влияет на это состояние."}
           </CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={onCreateOwn} disabled={isSaving}>
-            Создать свою школу
+          <Button asChild type="button" variant="outline">
+            <Link href="/demo">Открыть демо отдельно</Link>
           </Button>
-          <Button type="button" onClick={() => onLoadDemo("urban")} disabled={isSaving}>
-            Загрузить демо-школу
-          </Button>
-          {!isEmpty ? (
-            <Button type="button" variant="secondary" onClick={onCreateOwn} disabled={isSaving}>
-              Сбросить демо-данные
-            </Button>
-          ) : null}
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {templates.map((template) => (
-            <button
-              key={template.id}
-              type="button"
-              className="rounded-md border bg-white p-4 text-left transition-colors hover:bg-slate-50 disabled:opacity-60"
-              onClick={() => onLoadDemo(template.id)}
-              disabled={isSaving}
-            >
-              <span className="block font-medium">{template.title}</span>
-              <span className="mt-2 block text-sm leading-5 text-muted-foreground">{template.description}</span>
-            </button>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          {steps.map((step) => (
+            <Button key={step.title} asChild variant="outline" className="h-auto justify-start whitespace-normal p-4 text-left">
+              <Link href={step.href}>
+                <span>
+                  <span className="block font-medium">{step.title}</span>
+                  <span className="mt-2 block text-sm font-normal leading-5 text-muted-foreground">{step.description}</span>
+                </span>
+              </Link>
+            </Button>
           ))}
         </div>
       </CardContent>
