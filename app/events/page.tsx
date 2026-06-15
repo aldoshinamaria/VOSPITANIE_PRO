@@ -498,7 +498,7 @@ export default function EventsPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="grid gap-4 xl:grid-cols-3">
+            <CardContent className="grid items-stretch gap-4 xl:grid-cols-3">
               <FormField
                 label="Название конкурса"
                 value={competitionForm.title}
@@ -506,7 +506,7 @@ export default function EventsPage() {
                 required
                 onChange={(event) => setCompetitionField("title", event.target.value)}
               />
-              <label className="grid gap-2 text-sm font-medium">
+              <label className="grid h-full content-start gap-2 text-sm font-medium">
                 <FieldLabel label="Уровень конкурса" required />
                 <Select
                   value={competitionForm.competitionLevel}
@@ -625,7 +625,7 @@ export default function EventsPage() {
               note="Чем полнее карточка, тем точнее КПВР, планы и отчеты."
             />
           </div>
-          <CardContent className="grid gap-4 xl:grid-cols-3">
+          <CardContent className="grid items-stretch gap-4 xl:grid-cols-3">
             <FormField
               label="Название мероприятия"
               value={form.title}
@@ -635,7 +635,7 @@ export default function EventsPage() {
               onChange={(event) => setField("title", event.target.value)}
               help={<FieldHint documents={["КПВР", "Отчеты"]}>Пишите название так, как оно должно выглядеть в документах.</FieldHint>}
             />
-            <label className="grid gap-2 text-sm font-medium">
+            <label className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Модуль воспитания" required />
               <Select value={form.moduleId} onChange={(event) => setField("moduleId", event.target.value)}>
                 {activeModules.map((educationModule) => (
@@ -656,7 +656,7 @@ export default function EventsPage() {
               onChange={(event) => setField("direction", event.target.value)}
               help={<FieldHint>Это короткое содержательное направление для поиска и документов.</FieldHint>}
             />
-            <div className="grid gap-2 text-sm font-medium xl:col-span-3">
+            <div className="grid h-full content-start gap-2 text-sm font-medium xl:col-span-3">
               <FieldLabel label="Направления деятельности" required />
               <div className="flex flex-wrap gap-2">
                 {activeDirections.map((direction) => (
@@ -698,7 +698,7 @@ export default function EventsPage() {
               onChange={(event) => setField("description", event.target.value)}
               help={<FieldHint>Кратко опишите содержание: формат, цель, участники, итог. Достаточно 1-3 предложений.</FieldHint>}
             />
-            <div className="grid gap-2 text-sm font-medium">
+            <div className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Уровень образования" required />
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(educationLevelLabels) as EducationLevel[]).map((level) => (
@@ -748,7 +748,7 @@ export default function EventsPage() {
               value={form.venue}
               onChange={(event) => setField("venue", event.target.value)}
             />
-            <div className="grid gap-2 text-sm font-medium">
+            <div className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Месяц" />
               <div className="flex h-10 items-center rounded-md border bg-slate-50 px-3 text-sm">
                 {derivedMonth ? monthLabels[derivedMonth] : "Будет определен по дате начала"}
@@ -774,7 +774,7 @@ export default function EventsPage() {
               placeholder="организация или партнер"
               onChange={(event) => setField("partner", event.target.value)}
             />
-            <label className="grid gap-2 text-sm font-medium">
+            <label className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Связь с объединением" />
               <Select value={form.associationId} onChange={(event) => setField("associationId", event.target.value)}>
                 <option value="">Не связано с объединением</option>
@@ -786,7 +786,7 @@ export default function EventsPage() {
               </Select>
               <FieldHint>Связь покажет, какое объединение участвует в мероприятии.</FieldHint>
             </label>
-            <label className="grid gap-2 text-sm font-medium">
+            <label className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Связь с инфраструктурой" />
               <Select
                 value={form.infrastructureObjectId}
@@ -801,7 +801,7 @@ export default function EventsPage() {
               </Select>
               <FieldHint>Связь поможет понять, где и на базе чего проводится мероприятие.</FieldHint>
             </label>
-            <label className="grid gap-2 text-sm font-medium">
+            <label className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Связь с партнером воспитательной системы" />
               <Select value={form.systemPartnerId} onChange={(event) => setField("systemPartnerId", event.target.value)}>
                 <option value="">Не связано с партнером</option>
@@ -813,7 +813,7 @@ export default function EventsPage() {
               </Select>
               <FieldHint>Связанный партнер будет использоваться в рабочей программе и проверке соответствия.</FieldHint>
             </label>
-            <label className="grid gap-2 text-sm font-medium">
+            <label className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="РЎС‚Р°С‚СѓСЃ" />
               <Select value={form.status} onChange={(event) => setField("status", event.target.value as EventStatus)}>
                 <option value="planned">Планируется</option>
@@ -831,7 +831,7 @@ export default function EventsPage() {
               onChange={(event) => setField("participantsCount", event.target.value)}
               help={<FieldHint documents={["Отчеты", "Матрица"]}>После проведения укажите фактический охват. Это влияет на отчетность.</FieldHint>}
             />
-            <label className="grid gap-2 text-sm font-medium">
+            <label className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Приоритет" />
               <Select value={form.priority} onChange={(event) => setField("priority", event.target.value as Priority)}>
                 <option value="low">Низкий</option>

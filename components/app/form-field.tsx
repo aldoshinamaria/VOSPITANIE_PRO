@@ -4,6 +4,9 @@ import { Input, type InputProps } from "@/components/ui/input";
 import { Textarea, type TextareaProps } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
+const fieldShellClassName = "grid h-full content-start gap-2 text-sm font-medium";
+const fieldHelpClassName = "min-h-[3.75rem]";
+
 interface FieldBaseProps {
   label: string;
   required?: boolean;
@@ -21,14 +24,14 @@ export function FormField({
   ...props
 }: FieldBaseProps & InputProps) {
   return (
-    <label className={cn("grid gap-2 text-sm font-medium", className)}>
+    <label className={cn(fieldShellClassName, className)}>
       <FieldLabel label={label} required={required} />
       <Input
         aria-invalid={Boolean(error)}
         className={error ? "border-red-300 focus-visible:ring-red-500" : undefined}
         {...props}
       />
-      {help}
+      {help ? <div className={fieldHelpClassName}>{help}</div> : null}
       <FieldError error={error} />
     </label>
   );
@@ -43,14 +46,14 @@ export function TextareaField({
   ...props
 }: FieldBaseProps & TextareaProps) {
   return (
-    <label className={cn("grid gap-2 text-sm font-medium", className)}>
+    <label className={cn(fieldShellClassName, className)}>
       <FieldLabel label={label} required={required} />
       <Textarea
         aria-invalid={Boolean(error)}
         className={error ? "border-red-300 focus-visible:ring-red-500" : undefined}
         {...props}
       />
-      {help}
+      {help ? <div className={fieldHelpClassName}>{help}</div> : null}
       <FieldError error={error} />
     </label>
   );

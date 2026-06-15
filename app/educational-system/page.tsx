@@ -263,7 +263,7 @@ export default function EducationalSystemPage() {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid items-stretch gap-4 md:grid-cols-4">
         <MetricCard title="Объединений" value={system.associations.length} icon={Network} />
         <MetricCard title="Активных" value={activeAssociations} icon={Users} />
         <MetricCard title="Участников" value={totalParticipants} icon={Users} />
@@ -296,8 +296,8 @@ export default function EducationalSystemPage() {
             <CardDescription>Добавьте активы школы, которые могут участвовать в мероприятиях КПВР.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid gap-4 lg:grid-cols-3">
-              <label className="grid gap-2 text-sm font-medium">
+            <div className="grid items-stretch gap-4 lg:grid-cols-3">
+              <label className="grid h-full content-start gap-2 text-sm font-medium">
                 <FieldLabel label="Тип" required />
                 <Select
                   value={associationForm.type}
@@ -345,7 +345,7 @@ export default function EducationalSystemPage() {
                 onChange={(event) => setAssociationField("classes", event.target.value)}
                 help={<FieldHint>Укажите классы, которые участвуют в объединении.</FieldHint>}
               />
-              <label className="grid gap-2 text-sm font-medium">
+              <label className="grid h-full content-start gap-2 text-sm font-medium">
                 <FieldLabel label="Активность" />
                 <Select
                   value={associationForm.status}
@@ -375,7 +375,7 @@ export default function EducationalSystemPage() {
               Добавить объединение
             </Button>
 
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid items-stretch gap-4 xl:grid-cols-2">
               {system.associations.map((association) => {
                 const analytics = calculateAssociationAnalytics(association, state.events);
 
@@ -427,8 +427,8 @@ export default function EducationalSystemPage() {
             <CardDescription>Опишите пространства, которые используются в воспитательной работе.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid gap-4 lg:grid-cols-3">
-              <label className="grid gap-2 text-sm font-medium">
+            <div className="grid items-stretch gap-4 lg:grid-cols-3">
+              <label className="grid h-full content-start gap-2 text-sm font-medium">
                 <FieldLabel label="Тип" required />
                 <Select
                   value={infrastructureForm.type}
@@ -471,7 +471,7 @@ export default function EducationalSystemPage() {
               <Plus className="h-4 w-4" />
               Добавить объект
             </Button>
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid items-stretch gap-4 xl:grid-cols-2">
               {system.infrastructureObjects.map((object) => (
                 <Card key={object.id}>
                   <CardHeader className="flex-row items-start justify-between gap-3">
@@ -497,7 +497,7 @@ export default function EducationalSystemPage() {
             <CardDescription>Справочник партнеров для связи с мероприятиями и будущей генерации КПВР.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className="grid items-stretch gap-4 lg:grid-cols-3">
               <FormField
                 label="Название"
                 required
@@ -533,7 +533,7 @@ export default function EducationalSystemPage() {
               <Plus className="h-4 w-4" />
               Добавить партнера
             </Button>
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid items-stretch gap-4 xl:grid-cols-2">
               {system.partners.map((partner) => (
                 <Card key={partner.id}>
                   <CardHeader className="flex-row items-start justify-between gap-3">

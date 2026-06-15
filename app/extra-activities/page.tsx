@@ -195,7 +195,7 @@ export default function ExtraActivitiesPage() {
         className="mb-6"
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid items-stretch gap-4 md:grid-cols-3">
         <MetricCard title="Часы НОО / ООО / СОО" value={`${hoursByLevel.noo} / ${hoursByLevel.ooo} / ${hoursByLevel.soo}`} icon={Clock} />
         <MetricCard title="Активных программ" value={state.extraActivities.filter((activity) => activity.status === "active").length} icon={BookOpen} />
         <MetricCard title="Охват обучающихся" value={coverage} icon={Users} />
@@ -221,7 +221,7 @@ export default function ExtraActivitiesPage() {
           />
         </div>
         <CardContent className="grid gap-5">
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid items-stretch gap-4 lg:grid-cols-3">
             <FormField
               label="Название программы"
               required
@@ -231,7 +231,7 @@ export default function ExtraActivitiesPage() {
               onChange={(event) => setField("title", event.target.value)}
               help={<FieldHint documents={["План внеурочной деятельности"]}>Название попадет в таблицу плана без дополнительного редактирования.</FieldHint>}
             />
-            <label className="grid gap-2 text-sm font-medium">
+            <label className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Тип" required />
               <Select value={form.type} onChange={(event) => setField("type", event.target.value as ExtraActivityType)}>
                 {Object.entries(extraActivityTypeLabels).map(([value, label]) => (
@@ -252,8 +252,8 @@ export default function ExtraActivitiesPage() {
             />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="grid gap-2 text-sm font-medium">
+          <div className="grid items-stretch gap-4 lg:grid-cols-3">
+            <div className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Уровень образования" required />
               <div className="flex flex-wrap gap-2">
                 {levelOptions.map((level) => (
@@ -291,7 +291,7 @@ export default function ExtraActivitiesPage() {
             />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-4">
+          <div className="grid items-stretch gap-4 lg:grid-cols-4">
             <FormField
               label="Педагог"
               required
@@ -318,7 +318,7 @@ export default function ExtraActivitiesPage() {
               onChange={(event) => setField("studentsCount", Number(event.target.value))}
               help={<FieldHint documents={["Отчеты"]}>Количество обучающихся используется для расчета охвата внеурочной деятельностью.</FieldHint>}
             />
-            <label className="grid gap-2 text-sm font-medium">
+            <label className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Статус" required />
               <Select value={form.status} onChange={(event) => setField("status", event.target.value as ExtraActivityStatus)}>
                 {Object.entries(extraActivityStatusLabels).map(([value, label]) => (
@@ -363,8 +363,8 @@ export default function ExtraActivitiesPage() {
           <CardDescription>Фильтруйте программы по уровню образования, классу и педагогу.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <div className="grid gap-4 lg:grid-cols-[220px_180px_1fr_auto]">
-            <label className="grid gap-2 text-sm font-medium">
+          <div className="grid items-stretch gap-4 lg:grid-cols-[220px_180px_1fr_auto]">
+            <label className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Уровень образования" />
               <Select
                 value={filters.level}

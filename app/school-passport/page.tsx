@@ -229,7 +229,7 @@ export default function SchoolPassportPage() {
             <CardTitle>Общие данные</CardTitle>
             <CardDescription>Базовые сведения, которые используются в документах школы.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
+          <CardContent className="grid items-stretch gap-4 md:grid-cols-2">
             <FormField label="Название школы" value={form.name} error={errors.name} required placeholder="Например: МБОУ «СОШ N 7»" onChange={(event) => setField("name", event.target.value)} help={<FieldHint documents={["Рабочая программа", "КПВР"]}>Пишите полное официальное название школы.</FieldHint>} />
             <FormField label="Регион" value={form.region} error={errors.region} required placeholder="Например: Калужская область" onChange={(event) => setField("region", event.target.value)} help={<FieldHint documents={["Проверка соответствия"]}>Регион нужен для характеристик школы и будущих региональных требований.</FieldHint>} />
             <FormField label="Муниципалитет" value={form.municipality} error={errors.municipality} required placeholder="Например: город Обнинск" onChange={(event) => setField("municipality", event.target.value)} help={<FieldHint>Укажите город, район или муниципальный округ.</FieldHint>} />
@@ -298,7 +298,7 @@ export default function SchoolPassportPage() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid items-stretch gap-4 md:grid-cols-2">
                   <FormField
                     label="Название партнера"
                     value={partner.name}

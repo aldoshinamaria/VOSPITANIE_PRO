@@ -81,7 +81,7 @@ interface FieldHintProps {
 
 export function FieldHint({ children, examples = [], documents = [], muted = false }: FieldHintProps) {
   return (
-    <div className={cn("grid gap-2 rounded-md border px-3 py-2 text-xs font-normal leading-5", muted ? "border-slate-100 bg-slate-50 text-slate-500" : "border-sky-100 bg-sky-50 text-sky-950")}>
+    <div className={cn("grid min-h-[3.75rem] gap-2 rounded-md border px-3 py-2 text-xs font-normal leading-5", muted ? "border-slate-100 bg-slate-50 text-slate-500" : "border-sky-100 bg-sky-50 text-sky-950")}>
       <div>{children}</div>
       {examples.length > 0 ? (
         <div className="flex flex-wrap gap-1">
