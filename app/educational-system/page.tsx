@@ -310,21 +310,22 @@ export default function EducationalSystemPage() {
                   ))}
                 </Select>
                 <FieldHint examples={["Волонтерский отряд", "Школьный музей", "ЮИД", "Медиацентр"]}>
-                  Выберите тип, который ближе всего описывает объединение. Если точного типа нет, используйте собственное объединение.
+                  Выберите вариант, который ближе всего описывает объединение. Если точного типа нет, используйте собственное объединение.
                 </FieldHint>
               </label>
               <FormField
                 label="Название"
                 required
                 value={associationForm.title}
-                placeholder="Например: Правнуки Победы"
+                placeholder="Например: Волонтерский отряд «Правнуки Победы»"
                 onChange={(event) => setAssociationField("title", event.target.value)}
-                help={<FieldHint documents={["Рабочая программа", "Планы деятельности"]}>Пишите реальное название объединения, а не только тип. Например: «Правнуки Победы».</FieldHint>}
+                help={<FieldHint documents={["Рабочая программа", "Планы деятельности"]}>Пишите реальное название объединения, а не только его тип.</FieldHint>}
               />
               <FormField
                 label="Руководитель"
                 required
                 value={associationForm.leader}
+                placeholder="Например: Иванова Мария Сергеевна"
                 onChange={(event) => setAssociationField("leader", event.target.value)}
                 help={<FieldHint>Укажите педагога или сотрудника, который отвечает за работу объединения.</FieldHint>}
               />
@@ -333,14 +334,16 @@ export default function EducationalSystemPage() {
                 type="number"
                 min={0}
                 value={associationForm.participantsCount}
+                placeholder="Например: 25"
                 onChange={(event) => setAssociationField("participantsCount", Number(event.target.value))}
+                help={<FieldHint>Укажите примерное количество активных участников.</FieldHint>}
               />
               <FormField
                 label="Классы"
                 value={associationForm.classes}
-                placeholder="7-11"
+                placeholder="Например: 5-9 или 7-11"
                 onChange={(event) => setAssociationField("classes", event.target.value)}
-                help={<FieldHint examples={["1-4", "5-9", "8-11"]}>Классы помогают понять, какие уровни образования охватывает объединение.</FieldHint>}
+                help={<FieldHint>Укажите классы, которые участвуют в объединении.</FieldHint>}
               />
               <label className="grid gap-2 text-sm font-medium">
                 <FieldLabel label="Активность" />
@@ -362,8 +365,9 @@ export default function EducationalSystemPage() {
                 className="lg:col-span-2"
                 label="Описание"
                 value={associationForm.description}
+                placeholder="Например: добровольческие акции, помощь ветеранам, участие в городских мероприятиях"
                 onChange={(event) => setAssociationField("description", event.target.value)}
-                help={<FieldHint documents={["Рабочая программа"]}>Кратко опишите, чем занимается объединение: акции, проекты, встречи, медиа, экскурсии.</FieldHint>}
+                help={<FieldHint documents={["Рабочая программа"]}>Кратко опишите, чем занимается объединение.</FieldHint>}
               />
             </div>
             <Button className="w-fit" onClick={addAssociation} disabled={isSaving}>
@@ -498,26 +502,31 @@ export default function EducationalSystemPage() {
                 label="Название"
                 required
                 value={partnerForm.title}
+                placeholder="Например: Музей истории города Обнинска"
                 onChange={(event) => setPartnerField("title", event.target.value)}
-                help={<FieldHint examples={["Центральная библиотека", "Музей истории города", "Колледж"]}>Добавляйте организации, которые реально участвуют в воспитательной работе школы.</FieldHint>}
+                help={<FieldHint>Укажите конкретную организацию, с которой школа проводит совместную работу.</FieldHint>}
               />
               <FormField
                 label="Тип"
                 required
                 value={partnerForm.type}
+                placeholder="Например: музей, библиотека, колледж, учреждение культуры"
                 onChange={(event) => setPartnerField("type", event.target.value)}
+                help={<FieldHint>Укажите вид организации, а не ее название.</FieldHint>}
               />
               <FormField
                 label="Контактное лицо"
                 value={partnerForm.contactPerson}
+                placeholder="Например: Смирнова Елена Олеговна"
                 onChange={(event) => setPartnerField("contactPerson", event.target.value)}
               />
               <TextareaField
                 className="lg:col-span-3"
                 label="Описание сотрудничества"
                 value={partnerForm.cooperationDescription}
+                placeholder="Например: экскурсии, уроки мужества, профориентационные встречи, совместные акции"
                 onChange={(event) => setPartnerField("cooperationDescription", event.target.value)}
-                help={<FieldHint documents={["Рабочая программа", "Проверка соответствия"]}>Пишите конкретно: экскурсии, профпробы, профилактические занятия, акции, встречи.</FieldHint>}
+                help={<FieldHint documents={["Рабочая программа", "Проверка соответствия"]}>Опишите конкретные формы совместной работы. Эти данные попадут в описание социального партнерства.</FieldHint>}
               />
             </div>
             <Button className="w-fit" onClick={addPartner} disabled={isSaving}>

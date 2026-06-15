@@ -230,13 +230,13 @@ export default function SchoolPassportPage() {
             <CardDescription>Базовые сведения, которые используются в документах школы.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
-            <FormField label="Название школы" value={form.name} error={errors.name} required onChange={(event) => setField("name", event.target.value)} help={<FieldHint documents={["Рабочая программа", "КПВР"]}>Пишите полное официальное название школы. Пример: МБОУ Средняя общеобразовательная школа N 18.</FieldHint>} />
-            <FormField label="Регион" value={form.region} error={errors.region} required onChange={(event) => setField("region", event.target.value)} help={<FieldHint examples={["Калужская область", "Московская область"]} documents={["Проверка соответствия"]}>Регион помогает делать подсказки ближе к вашей школе и будущим региональным требованиям.</FieldHint>} />
-            <FormField label="Муниципалитет" value={form.municipality} error={errors.municipality} required onChange={(event) => setField("municipality", event.target.value)} help={<FieldHint>Укажите город, район или муниципальный округ. Это используется в характеристике школы.</FieldHint>} />
-            <FormField label="Адрес" value={form.address} error={errors.address} required onChange={(event) => setField("address", event.target.value)} />
-            <FormField label="ФИО директора" value={form.principal} error={errors.principal} required onChange={(event) => setField("principal", event.target.value)} />
-            <FormField label="ФИО заместителя директора по ВР" value={form.deputyDirector} error={errors.deputyDirector} required onChange={(event) => setField("deputyDirector", event.target.value)} help={<FieldHint documents={["КПВР", "Отчеты"]}>Этот человек обычно становится ответственным за воспитательную работу в документах.</FieldHint>} />
-            <FormField label="Учебный год" value={form.academicYear} error={errors.academicYear} required placeholder="2026/2027" onChange={(event) => setField("academicYear", event.target.value)} help={<FieldHint examples={["2025/2026", "2026/2027"]} documents={["КПВР", "Планы"]}>Учебный год попадет в заголовки календарных планов и рабочей программы.</FieldHint>} />
+            <FormField label="Название школы" value={form.name} error={errors.name} required placeholder="Например: МБОУ «СОШ N 7»" onChange={(event) => setField("name", event.target.value)} help={<FieldHint documents={["Рабочая программа", "КПВР"]}>Пишите полное официальное название школы.</FieldHint>} />
+            <FormField label="Регион" value={form.region} error={errors.region} required placeholder="Например: Калужская область" onChange={(event) => setField("region", event.target.value)} help={<FieldHint documents={["Проверка соответствия"]}>Регион нужен для характеристик школы и будущих региональных требований.</FieldHint>} />
+            <FormField label="Муниципалитет" value={form.municipality} error={errors.municipality} required placeholder="Например: город Обнинск" onChange={(event) => setField("municipality", event.target.value)} help={<FieldHint>Укажите город, район или муниципальный округ.</FieldHint>} />
+            <FormField label="Адрес" value={form.address} error={errors.address} required placeholder="Например: ул. Ленина, 15" onChange={(event) => setField("address", event.target.value)} />
+            <FormField label="ФИО директора" value={form.principal} error={errors.principal} required placeholder="Например: Иванов Сергей Петрович" onChange={(event) => setField("principal", event.target.value)} />
+            <FormField label="ФИО заместителя директора по ВР" value={form.deputyDirector} error={errors.deputyDirector} required placeholder="Например: Петрова Анна Сергеевна" onChange={(event) => setField("deputyDirector", event.target.value)} help={<FieldHint documents={["КПВР", "Отчеты"]}>Этот человек обычно становится ответственным за воспитательную работу в документах.</FieldHint>} />
+            <FormField label="Учебный год" value={form.academicYear} error={errors.academicYear} required placeholder="Например: 2025/2026" onChange={(event) => setField("academicYear", event.target.value)} help={<FieldHint documents={["КПВР", "Планы"]}>Учебный год попадет в заголовки календарных планов и рабочей программы.</FieldHint>} />
             <FormField label="Количество обучающихся" type="number" min={0} value={String(form.studentsCount)} error={errors.studentsCount} required onChange={(event) => setField("studentsCount", event.target.value)} help={<FieldHint documents={["Рабочая программа", "Отчеты"]}>Нужно для описания контингента и расчета охвата мероприятиями.</FieldHint>} />
             <FormField label="Количество классов" type="number" min={0} value={String(form.classesCount)} error={errors.classesCount} required onChange={(event) => setField("classesCount", event.target.value)} />
           </CardContent>
@@ -305,7 +305,8 @@ export default function SchoolPassportPage() {
                     error={errors[`partner.${partner.id}.name`]}
                     required
                     onChange={(event) => updatePartner(partner.id, "name", event.target.value)}
-                    help={<FieldHint examples={["Центральная библиотека", "Музей истории города", "Спортивная школа"]}>Укажите организацию, которая реально участвует в воспитательной работе.</FieldHint>}
+                    placeholder="Например: Центральная городская библиотека"
+                    help={<FieldHint>Укажите конкретную организацию, с которой школа проводит совместную работу.</FieldHint>}
                   />
                   <FormField
                     label="Тип партнера"
@@ -313,6 +314,8 @@ export default function SchoolPassportPage() {
                     error={errors[`partner.${partner.id}.type`]}
                     required
                     onChange={(event) => updatePartner(partner.id, "type", event.target.value)}
+                    placeholder="Например: музей, библиотека, колледж, учреждение культуры"
+                    help={<FieldHint>Укажите вид организации, а не ее название.</FieldHint>}
                   />
                   <TextareaField
                     className="md:col-span-2"
@@ -321,7 +324,8 @@ export default function SchoolPassportPage() {
                     error={errors[`partner.${partner.id}.activity`]}
                     required
                     onChange={(event) => updatePartner(partner.id, "activity", event.target.value)}
-                    help={<FieldHint documents={["Рабочая программа", "Проверка соответствия"]}>Опишите конкретику: совместные акции, экскурсии, профпробы, встречи, профилактические занятия.</FieldHint>}
+                    placeholder="Например: экскурсии, уроки мужества, профориентационные встречи, совместные акции"
+                    help={<FieldHint documents={["Рабочая программа", "Проверка соответствия"]}>Опишите конкретные формы совместной работы. Эти данные попадут в описание социального партнерства.</FieldHint>}
                   />
                 </div>
               </div>

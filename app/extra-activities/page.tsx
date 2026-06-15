@@ -227,8 +227,9 @@ export default function ExtraActivitiesPage() {
               required
               value={form.title}
               error={errors.title}
+              placeholder="Например: Орлята России"
               onChange={(event) => setField("title", event.target.value)}
-              help={<FieldHint examples={["Юный экскурсовод", "Школьный медиацентр", "Профориентационный клуб"]} documents={["План внеурочной деятельности"]}>Название попадет в таблицу плана без дополнительного редактирования.</FieldHint>}
+              help={<FieldHint documents={["План внеурочной деятельности"]}>Название попадет в таблицу плана без дополнительного редактирования.</FieldHint>}
             />
             <label className="grid gap-2 text-sm font-medium">
               <FieldLabel label="Тип" required />
@@ -245,8 +246,9 @@ export default function ExtraActivitiesPage() {
               required
               value={form.area}
               error={errors.area}
+              placeholder="Например: социальное"
               onChange={(event) => setField("area", event.target.value)}
-              help={<FieldHint examples={["социальное", "духовно-нравственное", "профориентационное"]}>Направление помогает группировать программы и видеть баланс воспитательной работы.</FieldHint>}
+              help={<FieldHint>Направление помогает группировать программы и видеть баланс воспитательной работы.</FieldHint>}
             />
           </div>
 
@@ -273,9 +275,9 @@ export default function ExtraActivitiesPage() {
               required
               value={form.classes}
               error={errors.classes}
-              placeholder="например: 5-7, 8А"
+              placeholder="Например: 1-4"
               onChange={(event) => setField("classes", event.target.value)}
-              help={<FieldHint examples={["1-4", "5-7", "8-11"]}>Классы нужны для таблицы плана и расчета охвата.</FieldHint>}
+              help={<FieldHint>Классы нужны для таблицы плана и расчета охвата.</FieldHint>}
             />
             <FormField
               label="Количество часов в неделю"
@@ -295,6 +297,7 @@ export default function ExtraActivitiesPage() {
               required
               value={form.teacher}
               error={errors.teacher}
+              placeholder="Например: Иванова Мария Сергеевна"
               onChange={(event) => setField("teacher", event.target.value)}
               help={<FieldHint>Укажите педагога, который ведет программу. Это попадет в план.</FieldHint>}
             />
@@ -330,7 +333,7 @@ export default function ExtraActivitiesPage() {
           <FormField
             label="Расписание"
             value={form.schedule}
-            placeholder="например: Пн, 15:00"
+            placeholder="Например: Пн, 15:00"
             onChange={(event) => setField("schedule", event.target.value)}
           />
 

@@ -631,8 +631,9 @@ export default function EventsPage() {
               value={form.title}
               error={errors.title}
               required
+              placeholder="Например: День знаний"
               onChange={(event) => setField("title", event.target.value)}
-              help={<FieldHint examples={["День самоуправления", "Георгиевская ленточка", "Урок мужества"]} documents={["КПВР", "Отчеты"]}>Пишите название так, как оно должно выглядеть в документах.</FieldHint>}
+              help={<FieldHint documents={["КПВР", "Отчеты"]}>Пишите название так, как оно должно выглядеть в документах.</FieldHint>}
             />
             <label className="grid gap-2 text-sm font-medium">
               <FieldLabel label="Модуль воспитания" required />
@@ -651,8 +652,9 @@ export default function EventsPage() {
               value={form.direction}
               error={errors.direction}
               required
+              placeholder="Например: патриотическое воспитание"
               onChange={(event) => setField("direction", event.target.value)}
-              help={<FieldHint examples={["патриотическое", "профориентация", "профилактика"]}>Это короткое содержательное направление воспитания для поиска и документов.</FieldHint>}
+              help={<FieldHint>Это короткое содержательное направление для поиска и документов.</FieldHint>}
             />
             <div className="grid gap-2 text-sm font-medium xl:col-span-3">
               <FieldLabel label="Направления деятельности" required />
@@ -692,6 +694,7 @@ export default function EventsPage() {
               value={form.description}
               error={errors.description}
               required
+              placeholder="Например: торжественная линейка, классные часы, встреча обучающихся и родителей"
               onChange={(event) => setField("description", event.target.value)}
               help={<FieldHint>Кратко опишите содержание: формат, цель, участники, итог. Достаточно 1-3 предложений.</FieldHint>}
             />
@@ -756,6 +759,7 @@ export default function EventsPage() {
               value={form.responsible}
               error={errors.responsible}
               required
+              placeholder="Например: заместитель директора по воспитательной работе"
               onChange={(event) => setField("responsible", event.target.value)}
               help={<FieldHint documents={["КПВР", "Контроль исполнения"]}>Ответственный будет отображаться в планах и панели контроля исполнения.</FieldHint>}
             />
