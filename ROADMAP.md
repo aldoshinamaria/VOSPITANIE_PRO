@@ -14,6 +14,20 @@ Next steps:
 - [ ] Add e2e smoke tests for `/demo`, `/educational-system`, `/kpvr`, `/work-program` and `/activity-reports`.
 - [ ] Prepare the public Vercel demonstration flow.
 
+## Update: Stage 18.1 Built-In Methodologist for School Data Entry
+
+- [x] Added a shared guidance system for data-entry UX: section guides, field hints, document impact chips, readiness indicators and next-step hints.
+- [x] Added section-level and field-level methodical guidance to the core new-user path: school passport, educational system, events and extracurricular activities.
+- [x] Added readiness indicators for school passport, educational system, event card and extracurricular program card.
+- [x] Added next-step prompts after meaningful data is present: passport to educational system, educational system to events, events to KPVR, extracurricular activities to work program.
+- [x] Business logic, AppState, Demo Mode, Work Mode and document generators were not changed.
+
+Next steps:
+
+- [ ] Extend the same guidance pattern to import documents, normative documents and document-processing forms.
+- [ ] Add context-aware examples that adapt to the user's region and existing school data.
+- [ ] Add a visual first-run checklist that points users to incomplete guided sections.
+
 Документ фиксирует ход разработки MVP. После каждого крупного изменения сюда нужно вносить:
 
 - выполненные задачи;

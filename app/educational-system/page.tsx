@@ -4,6 +4,7 @@ import { Building2, Handshake, Network, Plus, Trash2, Users } from "lucide-react
 import * as React from "react";
 
 import { useAppState } from "@/components/app/app-provider";
+import { FieldHint, NextStepHint, ReadinessIndicator, SectionGuide } from "@/components/app/field-guide";
 import { FieldLabel, FormField, TextareaField } from "@/components/app/form-field";
 import { MetricCard } from "@/components/app/metric-card";
 import { PageHeader } from "@/components/app/page-header";
@@ -68,6 +69,12 @@ export default function EducationalSystemPage() {
   const system = state.educationalSystem;
   const activeAssociations = system.associations.filter((association) => association.status === "active").length;
   const totalParticipants = system.associations.reduce((sum, association) => sum + association.participantsCount, 0);
+  const readinessCompleted = [
+    system.associations.length > 0,
+    system.infrastructureObjects.length > 0,
+    system.partners.length > 0,
+    activeAssociations > 0
+  ].filter(Boolean).length;
 
   function setAssociationField<TField extends keyof AssociationForm>(
     field: TField,
@@ -242,6 +249,20 @@ export default function EducationalSystemPage() {
         description="Объединения, инфраструктура, партнеры и связи с мероприятиями. Раздел готовит данные для будущего ИИ-конструктора КПВР."
       />
 
+      <div className="mt-6">
+        <SectionGuide
+          id="educational-system"
+          title="Как описать воспитательную систему"
+          purpose="Этот раздел показывает, на что реально опирается воспитательная работа школы: объединения, пространства и партнеры. Эти данные помогают системе связывать мероприятия с планами и рабочей программой."
+          fill={[
+            "Добавьте действующие объединения: волонтеры, музей, ЮИД, Движение Первых, медиацентр, театр.",
+            "Опишите инфраструктуру: музей, библиотека, актовый зал, спортивный зал, центр детских инициатив.",
+            "Укажите партнеров, которые участвуют в мероприятиях, профориентации, профилактике или патриотической работе."
+          ]}
+          documents={["Рабочая программа", "Планы деятельности", "Отчеты", "Проверка соответствия"]}
+        />
+      </div>
+
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard title="Объединений" value={system.associations.length} icon={Network} />
         <MetricCard title="Активных" value={activeAssociations} icon={Users} />
@@ -262,6 +283,13 @@ export default function EducationalSystemPage() {
       ) : null}
 
       <div className="mt-6 grid gap-6">
+        <ReadinessIndicator
+          title="Готовность воспитательной системы"
+          completed={readinessCompleted}
+          total={4}
+          note="Для уверенной генерации нужны хотя бы одно объединение, один объект инфраструктуры и один партнер."
+        />
+
         <Card>
           <CardHeader>
             <CardTitle>Воспитательные объединения</CardTitle>
@@ -281,6 +309,9 @@ export default function EducationalSystemPage() {
                     </option>
                   ))}
                 </Select>
+                <FieldHint examples={["Волонтерский отряд", "Школьный музей", "ЮИД", "Медиацентр"]}>
+                  Выберите тип, который ближе всего описывает объединение. Если точного типа нет, используйте собственное объединение.
+                </FieldHint>
               </label>
               <FormField
                 label="Название"
@@ -288,12 +319,14 @@ export default function EducationalSystemPage() {
                 value={associationForm.title}
                 placeholder="Например: Правнуки Победы"
                 onChange={(event) => setAssociationField("title", event.target.value)}
+                help={<FieldHint documents={["Рабочая программа", "Планы деятельности"]}>Пишите реальное название объединения, а не только тип. Например: «Правнуки Победы».</FieldHint>}
               />
               <FormField
                 label="Руководитель"
                 required
                 value={associationForm.leader}
                 onChange={(event) => setAssociationField("leader", event.target.value)}
+                help={<FieldHint>Укажите педагога или сотрудника, который отвечает за работу объединения.</FieldHint>}
               />
               <FormField
                 label="Количество участников"
@@ -307,6 +340,7 @@ export default function EducationalSystemPage() {
                 value={associationForm.classes}
                 placeholder="7-11"
                 onChange={(event) => setAssociationField("classes", event.target.value)}
+                help={<FieldHint examples={["1-4", "5-9", "8-11"]}>Классы помогают понять, какие уровни образования охватывает объединение.</FieldHint>}
               />
               <label className="grid gap-2 text-sm font-medium">
                 <FieldLabel label="Активность" />
@@ -329,6 +363,7 @@ export default function EducationalSystemPage() {
                 label="Описание"
                 value={associationForm.description}
                 onChange={(event) => setAssociationField("description", event.target.value)}
+                help={<FieldHint documents={["Рабочая программа"]}>Кратко опишите, чем занимается объединение: акции, проекты, встречи, медиа, экскурсии.</FieldHint>}
               />
             </div>
             <Button className="w-fit" onClick={addAssociation} disabled={isSaving}>
@@ -393,9 +428,9 @@ export default function EducationalSystemPage() {
                 <FieldLabel label="Тип" required />
                 <Select
                   value={infrastructureForm.type}
-                  onChange={(event) =>
-                    setInfrastructureField("type", event.target.value as InfrastructureObjectType)
-                  }
+                onChange={(event) =>
+                  setInfrastructureField("type", event.target.value as InfrastructureObjectType)
+                }
                 >
                   {Object.entries(infrastructureObjectTypeLabels).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -403,12 +438,16 @@ export default function EducationalSystemPage() {
                     </option>
                   ))}
                 </Select>
+                <FieldHint examples={["школьный музей", "библиотека", "актовый зал"]}>
+                  Инфраструктура показывает, где школа может проводить воспитательные события.
+                </FieldHint>
               </label>
               <FormField
                 label="Название"
                 required
                 value={infrastructureForm.title}
                 onChange={(event) => setInfrastructureField("title", event.target.value)}
+                help={<FieldHint examples={["Музей боевой славы", "Центр детских инициатив"]} documents={["Рабочая программа", "Планы"]}>Используйте понятное название объекта, которое принято в школе.</FieldHint>}
               />
               <FormField
                 label="Ответственный"
@@ -421,6 +460,7 @@ export default function EducationalSystemPage() {
                 label="Описание"
                 value={infrastructureForm.description}
                 onChange={(event) => setInfrastructureField("description", event.target.value)}
+                help={<FieldHint>Опишите, какие мероприятия здесь проходят и какие возможности дает этот объект.</FieldHint>}
               />
             </div>
             <Button className="w-fit" onClick={addInfrastructureObject} disabled={isSaving}>
@@ -459,6 +499,7 @@ export default function EducationalSystemPage() {
                 required
                 value={partnerForm.title}
                 onChange={(event) => setPartnerField("title", event.target.value)}
+                help={<FieldHint examples={["Центральная библиотека", "Музей истории города", "Колледж"]}>Добавляйте организации, которые реально участвуют в воспитательной работе школы.</FieldHint>}
               />
               <FormField
                 label="Тип"
@@ -476,6 +517,7 @@ export default function EducationalSystemPage() {
                 label="Описание сотрудничества"
                 value={partnerForm.cooperationDescription}
                 onChange={(event) => setPartnerField("cooperationDescription", event.target.value)}
+                help={<FieldHint documents={["Рабочая программа", "Проверка соответствия"]}>Пишите конкретно: экскурсии, профпробы, профилактические занятия, акции, встречи.</FieldHint>}
               />
             </div>
             <Button className="w-fit" onClick={addPartner} disabled={isSaving}>
@@ -518,6 +560,14 @@ export default function EducationalSystemPage() {
             </div>
           </CardContent>
         </Card>
+
+        {readinessCompleted >= 3 ? (
+          <NextStepHint
+            title="Следующий шаг: мероприятия"
+            description="Теперь можно добавлять мероприятия и связывать их с объединениями, инфраструктурой и партнерами."
+            href="/events"
+          />
+        ) : null}
       </div>
     </>
   );

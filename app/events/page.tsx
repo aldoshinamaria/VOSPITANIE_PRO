@@ -5,6 +5,7 @@ import * as React from "react";
 
 import { useAppState } from "@/components/app/app-provider";
 import { EmptyState } from "@/components/app/empty-state";
+import { FieldHint, NextStepHint, ReadinessIndicator, SectionGuide } from "@/components/app/field-guide";
 import { FieldError, FieldLabel, FormField, TextareaField } from "@/components/app/form-field";
 import { PageHeader } from "@/components/app/page-header";
 import { EventStatusBadge, PriorityBadge } from "@/components/app/status-badge";
@@ -149,6 +150,18 @@ export default function EventsPage() {
   const directionStatistics = buildDirectionStatistics(state.activityDirections, state.eventDirectionRelations, state.events);
   const educationalSystem = state.educationalSystem;
   const derivedMonth = form.startDate ? getMonthFromDate(form.startDate) : null;
+  const eventReadinessChecks = [
+    Boolean(form.title.trim()),
+    Boolean(form.moduleId),
+    form.directionIds.length > 0,
+    Boolean(form.description.trim()),
+    form.educationLevels.length > 0,
+    Boolean(form.classes.trim()),
+    Boolean(form.startDate),
+    Boolean(form.responsible.trim()),
+    Number(form.participantsCount) >= 0
+  ];
+  const eventReadinessCompleted = eventReadinessChecks.filter(Boolean).length;
   const filteredEvents = state.events.filter((event) => {
     const matchesModule = moduleFilter === "all" || event.moduleId === moduleFilter;
     const matchesLevel = levelFilter === "all" || event.educationLevels.includes(levelFilter);
@@ -451,6 +464,18 @@ export default function EventsPage() {
       />
 
       <div className="grid gap-6">
+        <SectionGuide
+          id="events"
+          title="Как заполнять мероприятия"
+          purpose="Мероприятие вносится один раз, а затем автоматически используется в КПВР, планах деятельности, отчетах и проверке соответствия."
+          fill={[
+            "Укажите название, модуль, направления, уровни образования, классы, дату и ответственного.",
+            "Свяжите мероприятие с объединением, инфраструктурой или партнером, если оно проводится на их базе или с их участием.",
+            "После проведения заполните участников и краткий отчет, чтобы событие попало в отчетность."
+          ]}
+          documents={["КПВР", "Планы деятельности", "Отчеты", "Проверка соответствия", "Рабочая программа"]}
+        />
+
         {savedMessage ? (
           <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
             {savedMessage}
@@ -592,6 +617,14 @@ export default function EventsPage() {
               ) : null}
             </div>
           </CardHeader>
+          <div className="px-6 pb-2">
+            <ReadinessIndicator
+              title="Готовность карточки мероприятия"
+              completed={eventReadinessCompleted}
+              total={eventReadinessChecks.length}
+              note="Чем полнее карточка, тем точнее КПВР, планы и отчеты."
+            />
+          </div>
           <CardContent className="grid gap-4 xl:grid-cols-3">
             <FormField
               label="Название мероприятия"
@@ -599,6 +632,7 @@ export default function EventsPage() {
               error={errors.title}
               required
               onChange={(event) => setField("title", event.target.value)}
+              help={<FieldHint examples={["День самоуправления", "Георгиевская ленточка", "Урок мужества"]} documents={["КПВР", "Отчеты"]}>Пишите название так, как оно должно выглядеть в документах.</FieldHint>}
             />
             <label className="grid gap-2 text-sm font-medium">
               <FieldLabel label="Модуль воспитания" required />
@@ -609,6 +643,7 @@ export default function EventsPage() {
                   </option>
                 ))}
               </Select>
+              <FieldHint documents={["КПВР", "Рабочая программа"]}>Модуль определяет, в каком блоке КПВР и рабочей программы появится мероприятие.</FieldHint>
               <FieldError error={errors.moduleId} />
             </label>
             <FormField
@@ -617,6 +652,7 @@ export default function EventsPage() {
               error={errors.direction}
               required
               onChange={(event) => setField("direction", event.target.value)}
+              help={<FieldHint examples={["патриотическое", "профориентация", "профилактика"]}>Это короткое содержательное направление воспитания для поиска и документов.</FieldHint>}
             />
             <div className="grid gap-2 text-sm font-medium xl:col-span-3">
               <FieldLabel label="Направления деятельности" required />
@@ -646,6 +682,9 @@ export default function EventsPage() {
                 </Button>
               </div>
               <FieldError error={errors.directionIds} />
+              <FieldHint documents={["Планы деятельности", "Матрица", "Отчеты"]}>
+                Одно мероприятие может относиться к нескольким направлениям. Например, «Внимание, дети!» может быть ДДТТ, профилактикой и работой с родителями.
+              </FieldHint>
             </div>
             <TextareaField
               className="xl:col-span-3"
@@ -654,6 +693,7 @@ export default function EventsPage() {
               error={errors.description}
               required
               onChange={(event) => setField("description", event.target.value)}
+              help={<FieldHint>Кратко опишите содержание: формат, цель, участники, итог. Достаточно 1-3 предложений.</FieldHint>}
             />
             <div className="grid gap-2 text-sm font-medium">
               <FieldLabel label="Уровень образования" required />
@@ -671,6 +711,9 @@ export default function EventsPage() {
                 ))}
               </div>
               <FieldError error={errors.educationLevels} />
+              <FieldHint documents={["КПВР НОО", "КПВР ООО", "КПВР СОО"]}>
+                Если выбрать несколько уровней, мероприятие попадет в несколько календарных планов.
+              </FieldHint>
             </div>
             <FormField
               label="Классы"
@@ -679,6 +722,7 @@ export default function EventsPage() {
               required
               placeholder="например: 5-7, 9А"
               onChange={(event) => setField("classes", event.target.value)}
+              help={<FieldHint examples={["1-4", "5-9", "10-11"]}>Классы нужны для КПВР, планов и анализа охвата.</FieldHint>}
             />
             <FormField
               label="Дата начала"
@@ -687,6 +731,7 @@ export default function EventsPage() {
               error={errors.startDate}
               required
               onChange={(event) => setField("startDate", event.target.value)}
+              help={<FieldHint documents={["КПВР", "Планы"]}>По дате начала система автоматически определит месяц.</FieldHint>}
             />
             <FormField
               label="Дата окончания"
@@ -712,6 +757,7 @@ export default function EventsPage() {
               error={errors.responsible}
               required
               onChange={(event) => setField("responsible", event.target.value)}
+              help={<FieldHint documents={["КПВР", "Контроль исполнения"]}>Ответственный будет отображаться в планах и панели контроля исполнения.</FieldHint>}
             />
             <FormField
               label="Соисполнители"
@@ -734,6 +780,7 @@ export default function EventsPage() {
                   </option>
                 ))}
               </Select>
+              <FieldHint>Связь покажет, какое объединение участвует в мероприятии.</FieldHint>
             </label>
             <label className="grid gap-2 text-sm font-medium">
               <FieldLabel label="Связь с инфраструктурой" />
@@ -748,6 +795,7 @@ export default function EventsPage() {
                   </option>
                 ))}
               </Select>
+              <FieldHint>Связь поможет понять, где и на базе чего проводится мероприятие.</FieldHint>
             </label>
             <label className="grid gap-2 text-sm font-medium">
               <FieldLabel label="Связь с партнером воспитательной системы" />
@@ -759,6 +807,7 @@ export default function EventsPage() {
                   </option>
                 ))}
               </Select>
+              <FieldHint>Связанный партнер будет использоваться в рабочей программе и проверке соответствия.</FieldHint>
             </label>
             <label className="grid gap-2 text-sm font-medium">
               <FieldLabel label="РЎС‚Р°С‚СѓСЃ" />
@@ -776,6 +825,7 @@ export default function EventsPage() {
               error={errors.participantsCount}
               required
               onChange={(event) => setField("participantsCount", event.target.value)}
+              help={<FieldHint documents={["Отчеты", "Матрица"]}>После проведения укажите фактический охват. Это влияет на отчетность.</FieldHint>}
             />
             <label className="grid gap-2 text-sm font-medium">
               <FieldLabel label="Приоритет" />
@@ -790,6 +840,7 @@ export default function EventsPage() {
               label="Краткий отчет"
               value={form.shortReport}
               onChange={(event) => setField("shortReport", event.target.value)}
+              help={<FieldHint documents={["Отчеты"]}>Заполняйте после проведения: что сделали, сколько участников, какой результат.</FieldHint>}
             />
             <div className="flex flex-wrap gap-2 xl:col-span-3">
               <Button onClick={saveEvent} disabled={isSaving}>
@@ -803,6 +854,14 @@ export default function EventsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {state.events.length > 0 ? (
+          <NextStepHint
+            title="Следующий шаг: сформировать КПВР"
+            description="После добавления мероприятий перейдите в КПВР: система разложит события по уровням образования и датам."
+            href="/kpvr"
+          />
+        ) : null}
 
         <Card>
           <CardHeader>

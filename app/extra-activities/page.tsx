@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BookOpen, Clock, Pencil, Plus, Trash2, Users } from "lucide-react";
 
 import { useAppState } from "@/components/app/app-provider";
+import { FieldHint, NextStepHint, ReadinessIndicator, SectionGuide } from "@/components/app/field-guide";
 import { FormField, FieldError, FieldLabel } from "@/components/app/form-field";
 import { MetricCard } from "@/components/app/metric-card";
 import { PageHeader } from "@/components/app/page-header";
@@ -66,6 +67,17 @@ export default function ExtraActivitiesPage() {
   const hoursByLevel = useMemo(() => calculateWeeklyHoursByLevel(state.extraActivities), [state.extraActivities]);
   const coverage = useMemo(() => calculateStudentsCoverage(state.extraActivities), [state.extraActivities]);
   const planRows = useMemo(() => buildExtraActivityPlanRows(state.extraActivities), [state.extraActivities]);
+  const formReadinessChecks = [
+    Boolean(form.title.trim()),
+    Boolean(form.area.trim()),
+    form.educationLevels.length > 0,
+    Boolean(form.classes.trim()),
+    form.weeklyHours > 0,
+    Boolean(form.teacher.trim()),
+    Boolean(form.classroom.trim()),
+    form.studentsCount > 0
+  ];
+  const formReadinessCompleted = formReadinessChecks.filter(Boolean).length;
 
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setSavedMessage(null);
@@ -170,6 +182,19 @@ export default function ExtraActivitiesPage() {
         description="Реестр программ внеурочной деятельности и дополнительного образования с расчетом часов, охвата и предпросмотром школьного плана."
       />
 
+      <SectionGuide
+        id="extra-activities"
+        title="Как заполнить внеурочную деятельность"
+        purpose="Программы внеурочной деятельности используются в плане внеурочной деятельности, рабочей программе и анализе охвата обучающихся."
+        fill={[
+          "Укажите название программы, направление, уровни образования, классы и педагога.",
+          "Заполните часы в неделю и количество обучающихся: система посчитает нагрузку и охват.",
+          "Добавляйте только реально действующие программы и кружки."
+        ]}
+        documents={["План внеурочной деятельности", "Рабочая программа", "Отчеты", "Планы деятельности"]}
+        className="mb-6"
+      />
+
       <div className="grid gap-4 md:grid-cols-3">
         <MetricCard title="Часы НОО / ООО / СОО" value={`${hoursByLevel.noo} / ${hoursByLevel.ooo} / ${hoursByLevel.soo}`} icon={Clock} />
         <MetricCard title="Активных программ" value={state.extraActivities.filter((activity) => activity.status === "active").length} icon={BookOpen} />
@@ -187,6 +212,14 @@ export default function ExtraActivitiesPage() {
           <CardTitle>{editingId ? "Редактирование программы" : "Карточка программы"}</CardTitle>
           <CardDescription>Заполните основные параметры курса, кружка или объединения.</CardDescription>
         </CardHeader>
+        <div className="px-6 pb-2">
+          <ReadinessIndicator
+            title="Готовность карточки программы"
+            completed={formReadinessCompleted}
+            total={formReadinessChecks.length}
+            note="Полная карточка дает корректный план внеурочной деятельности и расчет охвата."
+          />
+        </div>
         <CardContent className="grid gap-5">
           <div className="grid gap-4 lg:grid-cols-3">
             <FormField
@@ -195,6 +228,7 @@ export default function ExtraActivitiesPage() {
               value={form.title}
               error={errors.title}
               onChange={(event) => setField("title", event.target.value)}
+              help={<FieldHint examples={["Юный экскурсовод", "Школьный медиацентр", "Профориентационный клуб"]} documents={["План внеурочной деятельности"]}>Название попадет в таблицу плана без дополнительного редактирования.</FieldHint>}
             />
             <label className="grid gap-2 text-sm font-medium">
               <FieldLabel label="Тип" required />
@@ -212,6 +246,7 @@ export default function ExtraActivitiesPage() {
               value={form.area}
               error={errors.area}
               onChange={(event) => setField("area", event.target.value)}
+              help={<FieldHint examples={["социальное", "духовно-нравственное", "профориентационное"]}>Направление помогает группировать программы и видеть баланс воспитательной работы.</FieldHint>}
             />
           </div>
 
@@ -231,6 +266,7 @@ export default function ExtraActivitiesPage() {
                 ))}
               </div>
               <FieldError error={errors.educationLevels} />
+              <FieldHint documents={["План внеурочной деятельности", "Рабочая программа"]}>Выбранные уровни определяют, в какие планы попадет программа.</FieldHint>
             </div>
             <FormField
               label="Классы"
@@ -239,6 +275,7 @@ export default function ExtraActivitiesPage() {
               error={errors.classes}
               placeholder="например: 5-7, 8А"
               onChange={(event) => setField("classes", event.target.value)}
+              help={<FieldHint examples={["1-4", "5-7", "8-11"]}>Классы нужны для таблицы плана и расчета охвата.</FieldHint>}
             />
             <FormField
               label="Количество часов в неделю"
@@ -248,6 +285,7 @@ export default function ExtraActivitiesPage() {
               value={form.weeklyHours}
               error={errors.weeklyHours}
               onChange={(event) => setField("weeklyHours", Number(event.target.value))}
+              help={<FieldHint documents={["План внеурочной деятельности"]}>Система автоматически рассчитает годовой объем как часы в неделю × 34.</FieldHint>}
             />
           </div>
 
@@ -258,6 +296,7 @@ export default function ExtraActivitiesPage() {
               value={form.teacher}
               error={errors.teacher}
               onChange={(event) => setField("teacher", event.target.value)}
+              help={<FieldHint>Укажите педагога, который ведет программу. Это попадет в план.</FieldHint>}
             />
             <FormField
               label="Кабинет"
@@ -274,6 +313,7 @@ export default function ExtraActivitiesPage() {
               value={form.studentsCount}
               error={errors.studentsCount}
               onChange={(event) => setField("studentsCount", Number(event.target.value))}
+              help={<FieldHint documents={["Отчеты"]}>Количество обучающихся используется для расчета охвата внеурочной деятельностью.</FieldHint>}
             />
             <label className="grid gap-2 text-sm font-medium">
               <FieldLabel label="Статус" required />
@@ -305,6 +345,14 @@ export default function ExtraActivitiesPage() {
           </div>
         </CardContent>
       </Card>
+
+      {state.extraActivities.length > 0 ? (
+        <NextStepHint
+          title="Следующий шаг: рабочая программа"
+          description="После заполнения внеурочной деятельности проверьте, как эти данные отражаются в рабочей программе воспитания."
+          href="/work-program"
+        />
+      ) : null}
 
       <Card className="mt-6">
         <CardHeader>

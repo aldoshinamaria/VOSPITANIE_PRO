@@ -1,3 +1,5 @@
+import type * as React from "react";
+
 import { Input, type InputProps } from "@/components/ui/input";
 import { Textarea, type TextareaProps } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -7,6 +9,7 @@ interface FieldBaseProps {
   required?: boolean;
   error?: string;
   className?: string;
+  help?: React.ReactNode;
 }
 
 export function FormField({
@@ -14,6 +17,7 @@ export function FormField({
   required = false,
   error,
   className,
+  help,
   ...props
 }: FieldBaseProps & InputProps) {
   return (
@@ -24,6 +28,7 @@ export function FormField({
         className={error ? "border-red-300 focus-visible:ring-red-500" : undefined}
         {...props}
       />
+      {help}
       <FieldError error={error} />
     </label>
   );
@@ -34,6 +39,7 @@ export function TextareaField({
   required = false,
   error,
   className,
+  help,
   ...props
 }: FieldBaseProps & TextareaProps) {
   return (
@@ -44,6 +50,7 @@ export function TextareaField({
         className={error ? "border-red-300 focus-visible:ring-red-500" : undefined}
         {...props}
       />
+      {help}
       <FieldError error={error} />
     </label>
   );

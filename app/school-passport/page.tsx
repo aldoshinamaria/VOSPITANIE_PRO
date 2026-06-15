@@ -4,6 +4,7 @@ import { Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import * as React from "react";
 
 import { useAppState } from "@/components/app/app-provider";
+import { FieldHint, NextStepHint, ReadinessIndicator, SectionGuide } from "@/components/app/field-guide";
 import { FormField, TextareaField } from "@/components/app/form-field";
 import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,10 @@ export default function SchoolPassportPage() {
   const [form, setForm] = React.useState(state.schoolPassport);
   const [errors, setErrors] = React.useState<ValidationErrors>({});
   const [savedAt, setSavedAt] = React.useState<string | null>(null);
+  const completedRequiredFields = requiredFields.filter(({ key }) => {
+    const value = form[key];
+    return typeof value === "number" ? value > 0 : Boolean(String(value).trim());
+  }).length;
 
   React.useEffect(() => {
     setForm(state.schoolPassport);
@@ -171,6 +176,18 @@ export default function SchoolPassportPage() {
       />
 
       <div className="grid gap-6">
+        <SectionGuide
+          id="school-passport"
+          title="Как заполнить паспорт школы"
+          purpose="Паспорт задает официальные сведения о школе. Эти данные автоматически подставляются в КПВР, рабочую программу, планы, отчеты и проверку соответствия."
+          fill={[
+            "Заполните официальное название, регион, муниципалитет и адрес так, как они указаны в документах школы.",
+            "Укажите директора и заместителя по воспитательной работе: эти ФИО попадут в документы и отчеты.",
+            "Отметьте инфраструктуру и партнеров, чтобы система понимала воспитательную среду школы."
+          ]}
+          documents={["Рабочая программа", "КПВР", "Планы деятельности", "Отчеты", "Проверка соответствия"]}
+        />
+
         <Card>
           <CardContent className="grid gap-4 p-5 md:grid-cols-3">
             <div>
@@ -187,6 +204,13 @@ export default function SchoolPassportPage() {
             </div>
           </CardContent>
         </Card>
+
+        <ReadinessIndicator
+          title="Готовность паспорта школы"
+          completed={completedRequiredFields}
+          total={requiredFields.length}
+          note="Минимально нужны общие сведения. Инфраструктура и партнеры повышают качество автоматической генерации документов."
+        />
 
         {Object.keys(errors).length > 0 ? (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -206,14 +230,14 @@ export default function SchoolPassportPage() {
             <CardDescription>Базовые сведения, которые используются в документах школы.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
-            <FormField label="Название школы" value={form.name} error={errors.name} required onChange={(event) => setField("name", event.target.value)} />
-            <FormField label="Регион" value={form.region} error={errors.region} required onChange={(event) => setField("region", event.target.value)} />
-            <FormField label="Муниципалитет" value={form.municipality} error={errors.municipality} required onChange={(event) => setField("municipality", event.target.value)} />
+            <FormField label="Название школы" value={form.name} error={errors.name} required onChange={(event) => setField("name", event.target.value)} help={<FieldHint documents={["Рабочая программа", "КПВР"]}>Пишите полное официальное название школы. Пример: МБОУ Средняя общеобразовательная школа N 18.</FieldHint>} />
+            <FormField label="Регион" value={form.region} error={errors.region} required onChange={(event) => setField("region", event.target.value)} help={<FieldHint examples={["Калужская область", "Московская область"]} documents={["Проверка соответствия"]}>Регион помогает делать подсказки ближе к вашей школе и будущим региональным требованиям.</FieldHint>} />
+            <FormField label="Муниципалитет" value={form.municipality} error={errors.municipality} required onChange={(event) => setField("municipality", event.target.value)} help={<FieldHint>Укажите город, район или муниципальный округ. Это используется в характеристике школы.</FieldHint>} />
             <FormField label="Адрес" value={form.address} error={errors.address} required onChange={(event) => setField("address", event.target.value)} />
             <FormField label="ФИО директора" value={form.principal} error={errors.principal} required onChange={(event) => setField("principal", event.target.value)} />
-            <FormField label="ФИО заместителя директора по ВР" value={form.deputyDirector} error={errors.deputyDirector} required onChange={(event) => setField("deputyDirector", event.target.value)} />
-            <FormField label="Учебный год" value={form.academicYear} error={errors.academicYear} required placeholder="2026/2027" onChange={(event) => setField("academicYear", event.target.value)} />
-            <FormField label="Количество обучающихся" type="number" min={0} value={String(form.studentsCount)} error={errors.studentsCount} required onChange={(event) => setField("studentsCount", event.target.value)} />
+            <FormField label="ФИО заместителя директора по ВР" value={form.deputyDirector} error={errors.deputyDirector} required onChange={(event) => setField("deputyDirector", event.target.value)} help={<FieldHint documents={["КПВР", "Отчеты"]}>Этот человек обычно становится ответственным за воспитательную работу в документах.</FieldHint>} />
+            <FormField label="Учебный год" value={form.academicYear} error={errors.academicYear} required placeholder="2026/2027" onChange={(event) => setField("academicYear", event.target.value)} help={<FieldHint examples={["2025/2026", "2026/2027"]} documents={["КПВР", "Планы"]}>Учебный год попадет в заголовки календарных планов и рабочей программы.</FieldHint>} />
+            <FormField label="Количество обучающихся" type="number" min={0} value={String(form.studentsCount)} error={errors.studentsCount} required onChange={(event) => setField("studentsCount", event.target.value)} help={<FieldHint documents={["Рабочая программа", "Отчеты"]}>Нужно для описания контингента и расчета охвата мероприятиями.</FieldHint>} />
             <FormField label="Количество классов" type="number" min={0} value={String(form.classesCount)} error={errors.classesCount} required onChange={(event) => setField("classesCount", event.target.value)} />
           </CardContent>
         </Card>
@@ -239,6 +263,11 @@ export default function SchoolPassportPage() {
                   {item.label}
                 </label>
               ))}
+            </div>
+            <div className="mt-4">
+              <FieldHint examples={["школьный музей", "медиацентр", "ЮИД", "Движение Первых"]} documents={["Рабочая программа", "Планы деятельности", "Проверка соответствия"]}>
+                Отмечайте только реально действующие объекты и объединения. Позже система будет связывать с ними мероприятия и рекомендации.
+              </FieldHint>
             </div>
           </CardContent>
         </Card>
@@ -276,6 +305,7 @@ export default function SchoolPassportPage() {
                     error={errors[`partner.${partner.id}.name`]}
                     required
                     onChange={(event) => updatePartner(partner.id, "name", event.target.value)}
+                    help={<FieldHint examples={["Центральная библиотека", "Музей истории города", "Спортивная школа"]}>Укажите организацию, которая реально участвует в воспитательной работе.</FieldHint>}
                   />
                   <FormField
                     label="Тип партнера"
@@ -291,12 +321,21 @@ export default function SchoolPassportPage() {
                     error={errors[`partner.${partner.id}.activity`]}
                     required
                     onChange={(event) => updatePartner(partner.id, "activity", event.target.value)}
+                    help={<FieldHint documents={["Рабочая программа", "Проверка соответствия"]}>Опишите конкретику: совместные акции, экскурсии, профпробы, встречи, профилактические занятия.</FieldHint>}
                   />
                 </div>
               </div>
             ))}
           </CardContent>
         </Card>
+
+        {completedRequiredFields === requiredFields.length ? (
+          <NextStepHint
+            title="Следующий шаг: воспитательная система"
+            description="После паспорта заполните объединения, инфраструктуру и партнеров. Это усилит рабочую программу и планы деятельности."
+            href="/educational-system"
+          />
+        ) : null}
       </div>
     </>
   );
