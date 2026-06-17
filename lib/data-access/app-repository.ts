@@ -3,6 +3,7 @@ import { migrateEventDirectionRelations, standardActivityDirections } from "@/li
 import { migrateEventExecutions } from "@/lib/domain/event-execution";
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
 import { createUnknownDocumentClassification } from "@/lib/domain/document-processing/classifier";
+import { migrateDocumentEventPreview } from "@/lib/domain/document-processing/event-preview-extractor";
 import { findModuleIdByTitle } from "@/lib/domain/modules";
 import { WORK_STATE_STORAGE_KEY } from "@/lib/data-access/storage-keys";
 import type {
@@ -133,7 +134,8 @@ export function migrateState(state: Partial<AppState>, fallbackState: AppState =
 function migrateProcessedDocument(document: DocumentProcessingRecord): DocumentProcessingRecord {
   return {
     ...document,
-    classification: document.classification ?? createUnknownDocumentClassification(document.createdAt)
+    classification: document.classification ?? createUnknownDocumentClassification(document.createdAt),
+    extractedEventPreview: migrateDocumentEventPreview(document.extractedEventPreview)
   };
 }
 

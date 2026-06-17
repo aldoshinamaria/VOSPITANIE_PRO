@@ -68,6 +68,10 @@ export interface DocumentClassifier {
   classify(document: NormalizedDocument): Promise<NormalizedDocument>;
 }
 
+export interface DocumentEventPreviewExtractor {
+  extract(document: NormalizedDocument): Promise<NormalizedDocument>;
+}
+
 export interface DocumentAnalysisPreparation {
   prepare(document: NormalizedDocument): Promise<DocumentAnalysisPayload>;
 }

@@ -25,6 +25,27 @@ export interface DocumentClassification {
   classifiedAt: string;
 }
 
+export type DocumentEventPreviewCategory = "REAL_EVENT" | "WORK_FORMAT" | "ACTIVITY_DIRECTION" | "NOISE";
+
+export interface DocumentEventPreview {
+  id: string;
+  title: string;
+  confidence: number;
+  category: DocumentEventPreviewCategory;
+  qualityScore: number;
+  qualityReason: string;
+  sourceDocumentId: string;
+  sourceDocumentName: string;
+  sourceType: DocumentSourceType;
+  dateText: string;
+  month: number | null;
+  educationLevels: string[];
+  classesText: string;
+  responsibleText: string;
+  sourceFragment: string;
+  matchedSignals: string[];
+}
+
 export type DocumentProcessingLogLevel = "info" | "warning" | "error";
 
 export type DocumentProcessingStage =
@@ -92,6 +113,7 @@ export interface NormalizedDocument {
   validationStatus: DocumentValidationStatus;
   warnings: string[];
   classification?: DocumentClassification;
+  extractedEventPreview?: DocumentEventPreview[];
 }
 
 export interface DocumentProcessingLogEntry {
@@ -120,6 +142,7 @@ export interface DocumentProcessingRecord {
   listCount: number;
   confirmed: boolean;
   classification: DocumentClassification;
+  extractedEventPreview: DocumentEventPreview[];
 }
 
 export interface DocumentAnalysisPayload {

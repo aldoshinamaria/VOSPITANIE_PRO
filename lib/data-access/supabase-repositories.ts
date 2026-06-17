@@ -32,6 +32,7 @@ import type {
 } from "@/lib/supabase/client";
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
 import { createUnknownDocumentClassification } from "@/lib/domain/document-processing/classifier";
+import { migrateDocumentEventPreview } from "@/lib/domain/document-processing/event-preview-extractor";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { createId } from "@/lib/utils";
 import type { AppState } from "@/types/app-state";
@@ -1028,7 +1029,8 @@ function mapExtractedEventRow(row: ExtractedEventRow): ExtractedEvent {
 function normalizeProcessedDocument(document: DocumentProcessingRecord): DocumentProcessingRecord {
   return {
     ...document,
-    classification: document.classification ?? createUnknownDocumentClassification(document.createdAt)
+    classification: document.classification ?? createUnknownDocumentClassification(document.createdAt),
+    extractedEventPreview: migrateDocumentEventPreview(document.extractedEventPreview)
   };
 }
 

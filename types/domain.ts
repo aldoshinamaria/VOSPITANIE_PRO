@@ -74,6 +74,8 @@ export type { EducationModule } from "@/types/modules";
 export type {
   DocumentAnalysisPayload,
   DocumentClassification,
+  DocumentEventPreview,
+  DocumentEventPreviewCategory,
   DocumentKind,
   DocumentProcessingLogEntry,
   DocumentProcessingLogLevel,

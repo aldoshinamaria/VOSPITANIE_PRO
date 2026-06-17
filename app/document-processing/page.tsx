@@ -17,6 +17,8 @@ import { createUnknownDocumentClassification } from "@/lib/domain/document-proce
 import { createDocumentProcessingPipeline } from "@/lib/domain/document-processing/pipeline";
 import type {
   DocumentClassification,
+  DocumentEventPreview,
+  DocumentEventPreviewCategory,
   DocumentKind,
   DocumentProcessingLogEntry,
   DocumentProcessingRecord,
@@ -54,6 +56,13 @@ const documentKindLabels: Record<DocumentKind, string> = {
   development_program: "Программа развития",
   normative_document: "Нормативный документ",
   unknown: "Не определен"
+};
+
+const eventPreviewCategoryLabels: Record<DocumentEventPreviewCategory, string> = {
+  REAL_EVENT: "Мероприятие",
+  WORK_FORMAT: "Форма работы",
+  ACTIVITY_DIRECTION: "Направление",
+  NOISE: "Шум"
 };
 
 export default function DocumentProcessingPage() {
@@ -116,7 +125,7 @@ export default function DocumentProcessingPage() {
         <MetricCard title="Обработано" value={state.processedDocuments.length} icon={FileSearch} />
         <MetricCard title="Подтверждено" value={state.processedDocuments.filter((document) => document.confirmed).length} icon={CheckCircle2} />
         <MetricCard title="Требуют проверки" value={state.processedDocuments.filter((document) => document.validationStatus === "needs_review").length} icon={ShieldAlert} />
-        <MetricCard title="Журнал" value={state.documentProcessingLogs.length} icon={TimerReset} />
+        <MetricCard title="Найдено записей" value={state.processedDocuments.reduce((sum, document) => sum + (document.extractedEventPreview ?? []).length, 0)} icon={TimerReset} />
       </div>
 
       {error ? <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
@@ -213,6 +222,7 @@ function DocumentReview({ document, onConfirm }: { document: NormalizedDocument;
         </div>
         <ReviewBlock title="Что найдено" items={buildFoundItems(document)} />
         <ClassificationBlock classification={document.classification ?? createUnknownDocumentClassification()} />
+        <EventPreviewBlock events={document.extractedEventPreview ?? []} />
         <ReviewBlock title="Что не удалось найти" items={buildMissingItems(document)} />
         <ReviewBlock title="Что вызывает сомнения" items={document.warnings.length > 0 ? document.warnings : ["Критичных сомнений не обнаружено."]} />
         <ReviewBlock title="Что требует ручной проверки" items={buildManualReviewItems(document)} />
@@ -262,6 +272,9 @@ function ProcessedDocumentCard({ document, onConfirm }: { document: DocumentProc
             <span className="text-muted-foreground">Признаки не найдены.</span>
           )}
         </div>
+      </div>
+      <div className="mt-3">
+        <EventPreviewBlock events={document.extractedEventPreview} compact />
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <Badge variant={document.confirmed ? "success" : "outline"}>{document.confirmed ? "Подтвержден" : "Не подтвержден"}</Badge>
@@ -324,6 +337,67 @@ function ClassificationBlock({ classification }: { classification: DocumentClass
   );
 }
 
+function EventPreviewBlock({ events, compact = false }: { events: DocumentEventPreview[]; compact?: boolean }) {
+  const visibleEvents = compact ? events.slice(0, 5) : events.slice(0, 15);
+  const summary = getEventPreviewSummary(events);
+
+  return (
+    <div className="rounded-md border bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="font-medium">Найдено записей: {events.length}</div>
+        <Badge variant={events.length > 0 ? "success" : "outline"}>{events.length > 0 ? "preview only" : "не найдено"}</Badge>
+      </div>
+      <div className="mt-3 grid gap-2 text-xs sm:grid-cols-4">
+        {Object.entries(eventPreviewCategoryLabels).map(([category, label]) => (
+          <div key={category} className="rounded-md border bg-slate-50 px-3 py-2">
+            <div className="text-muted-foreground">{label}</div>
+            <div className="mt-1 text-lg font-semibold text-slate-900">{summary[category as DocumentEventPreviewCategory]}</div>
+          </div>
+        ))}
+      </div>
+      {visibleEvents.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">Кандидаты не найдены. Данные в реестр мероприятий не импортируются.</p>
+      ) : (
+        <div className="mt-3 grid gap-3">
+          {visibleEvents.map((event) => (
+            <div key={event.id} className="rounded-md border bg-slate-50 p-3 text-sm">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="font-medium text-slate-900">{event.title}</div>
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant={event.category === "REAL_EVENT" ? "success" : event.category === "NOISE" ? "secondary" : "outline"} className="bg-white">
+                    {eventPreviewCategoryLabels[event.category]}
+                  </Badge>
+                  <Badge variant="outline" className="bg-white">
+                    {event.qualityScore}%
+                  </Badge>
+                </div>
+              </div>
+              <div className="mt-2 grid gap-1 text-xs text-muted-foreground md:grid-cols-2">
+                <div>Источник: {event.sourceDocumentName}</div>
+                <div>Месяц: {formatPreviewMonth(event.month)}</div>
+                <div>Уровень: {event.educationLevels.length > 0 ? event.educationLevels.join(", ") : "не определен"}</div>
+                <div>Ответственный: {event.responsibleText || "не определен"}</div>
+              </div>
+              <div className="mt-2 text-xs text-slate-700">Оценка: {event.qualityReason}</div>
+              <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600">{event.sourceFragment}</p>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {event.matchedSignals.map((signal) => (
+                  <Badge key={signal} variant="outline" className="bg-white">
+                    {signal}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ))}
+          {events.length > visibleEvents.length ? (
+            <div className="text-xs text-muted-foreground">Показаны первые {visibleEvents.length} из {events.length}. Полный список хранится в preview документа.</div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Summary({ title, value }: { title: string; value: string | number }) {
   return (
     <div className="rounded-md border bg-slate-50 p-3">
@@ -360,12 +434,36 @@ function toProcessingRecord(document: NormalizedDocument): DocumentProcessingRec
     tableCount: document.tables.length,
     listCount: document.lists.length,
     classification: document.classification ?? createUnknownDocumentClassification(document.createdAt),
+    extractedEventPreview: document.extractedEventPreview ?? [],
     confirmed: false
   };
 }
 
 function getRecordClassification(document: DocumentProcessingRecord) {
   return document.classification ?? createUnknownDocumentClassification(document.createdAt);
+}
+
+function getEventPreviewSummary(events: DocumentEventPreview[]): Record<DocumentEventPreviewCategory, number> {
+  return events.reduce<Record<DocumentEventPreviewCategory, number>>(
+    (summary, event) => ({
+      ...summary,
+      [event.category]: summary[event.category] + 1
+    }),
+    {
+      REAL_EVENT: 0,
+      WORK_FORMAT: 0,
+      ACTIVITY_DIRECTION: 0,
+      NOISE: 0
+    }
+  );
+}
+
+function formatPreviewMonth(month: number | null) {
+  if (!month) {
+    return "не определен";
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", { month: "long" }).format(new Date(2026, month - 1, 1));
 }
 
 function buildFoundItems(document: NormalizedDocument) {

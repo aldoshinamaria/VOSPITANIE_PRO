@@ -3,6 +3,7 @@ import type { DocumentSourceType } from "@/types/document-processing";
 import type {
   DocumentAnalysisPreparation,
   DocumentClassifier,
+  DocumentEventPreviewExtractor,
   DocumentNormalizer,
   DocumentProcessingLogger,
   DocumentProcessingPipeline,
@@ -12,6 +13,7 @@ import type {
 } from "./contracts";
 import { DefaultDocumentAnalysisPreparation } from "./analysis-preparation";
 import { createRuleBasedDocumentClassifier, createUnknownDocumentClassification } from "./classifier";
+import { createRuleBasedDocumentEventPreviewExtractor } from "./event-preview-extractor";
 import { InMemoryDocumentProcessingLogger } from "./logger";
 import { DefaultDocumentNormalizer } from "./normalizer";
 import { BrowserDocumentStorageLayer } from "./storage";
@@ -27,6 +29,7 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
     private readonly normalizer: DocumentNormalizer,
     private readonly validator: QualityDocumentValidator,
     private readonly classifier: DocumentClassifier,
+    private readonly eventPreviewExtractor: DocumentEventPreviewExtractor,
     private readonly preparation: DocumentAnalysisPreparation,
     private readonly logger: DocumentProcessingLogger
   ) {}
@@ -100,7 +103,16 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
         message: `РўРёРї РґРѕРєСѓРјРµРЅС‚Р°: ${classification.documentKind}, СѓРІРµСЂРµРЅРЅРѕСЃС‚СЊ ${classification.confidence}%.`
       });
 
-      const analysisPayload = await this.preparation.prepare(classified);
+      const withEventPreview = await this.eventPreviewExtractor.extract(classified);
+      this.logger.log({
+        documentId,
+        fileName: storedFile.fileName,
+        stage: "prepared_for_analysis",
+        level: "info",
+        message: `Найдено мероприятий для предварительного просмотра: ${withEventPreview.extractedEventPreview?.length ?? 0}.`
+      });
+
+      const analysisPayload = await this.preparation.prepare(withEventPreview);
       this.logger.log({
         documentId,
         fileName: storedFile.fileName,
@@ -110,7 +122,7 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
       });
 
       return {
-        normalizedDocument: classified,
+        normalizedDocument: withEventPreview,
         analysisPayload,
         logs: this.logger.list()
       };
@@ -135,6 +147,7 @@ export function createDocumentProcessingPipeline(mode: AppMode = "work"): Docume
     new DefaultDocumentNormalizer(),
     new QualityDocumentValidator(),
     createRuleBasedDocumentClassifier(),
+    createRuleBasedDocumentEventPreviewExtractor(),
     new DefaultDocumentAnalysisPreparation(),
     new InMemoryDocumentProcessingLogger()
   );
