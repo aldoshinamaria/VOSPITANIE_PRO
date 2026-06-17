@@ -13,8 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { createUnknownDocumentClassification } from "@/lib/domain/document-processing/classifier";
 import { createDocumentProcessingPipeline } from "@/lib/domain/document-processing/pipeline";
 import type {
+  DocumentClassification,
+  DocumentKind,
   DocumentProcessingLogEntry,
   DocumentProcessingRecord,
   DocumentSourceType,
@@ -36,6 +39,21 @@ const validationLabels: Record<DocumentValidationStatus, string> = {
   needs_review: "Требует проверки",
   invalid: "Не подходит",
   requires_ocr: "Требуется OCR"
+};
+
+const documentKindLabels: Record<DocumentKind, string> = {
+  federal_work_program: "Федеральная рабочая программа воспитания",
+  federal_calendar_plan: "Федеральный календарный план",
+  regional_document: "Региональный документ",
+  municipal_document: "Муниципальный документ",
+  local_school_document: "Локальный документ школы",
+  school_work_program: "Рабочая программа школы",
+  kpvr: "КПВР",
+  extra_activity_plan: "План внеурочной деятельности",
+  social_passport: "Социальный паспорт",
+  development_program: "Программа развития",
+  normative_document: "Нормативный документ",
+  unknown: "Не определен"
 };
 
 export default function DocumentProcessingPage() {
@@ -194,6 +212,7 @@ function DocumentReview({ document, onConfirm }: { document: NormalizedDocument;
           <Summary title="Списков" value={document.lists.length} />
         </div>
         <ReviewBlock title="Что найдено" items={buildFoundItems(document)} />
+        <ClassificationBlock classification={document.classification ?? createUnknownDocumentClassification()} />
         <ReviewBlock title="Что не удалось найти" items={buildMissingItems(document)} />
         <ReviewBlock title="Что вызывает сомнения" items={document.warnings.length > 0 ? document.warnings : ["Критичных сомнений не обнаружено."]} />
         <ReviewBlock title="Что требует ручной проверки" items={buildManualReviewItems(document)} />
@@ -211,6 +230,8 @@ function DocumentReview({ document, onConfirm }: { document: NormalizedDocument;
 }
 
 function ProcessedDocumentCard({ document, onConfirm }: { document: DocumentProcessingRecord; onConfirm: () => void }) {
+  const classification = getRecordClassification(document);
+
   return (
     <div className="rounded-md border p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -226,6 +247,21 @@ function ProcessedDocumentCard({ document, onConfirm }: { document: DocumentProc
         <div>Разделов: {document.sectionCount}</div>
         <div>Таблиц: {document.tableCount}</div>
         <div>Списков: {document.listCount}</div>
+      </div>
+      <div className="mt-3 rounded-md border bg-slate-50 p-3 text-sm">
+        <div className="font-medium">Тип документа: {documentKindLabels[classification.documentKind]}</div>
+        <div className="mt-1 text-muted-foreground">Уверенность: {classification.confidence}%</div>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {classification.matchedSignals.length > 0 ? (
+            classification.matchedSignals.map((signal) => (
+              <Badge key={signal} variant="outline" className="bg-white">
+                {signal}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-muted-foreground">Признаки не найдены.</span>
+          )}
+        </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <Badge variant={document.confirmed ? "success" : "outline"}>{document.confirmed ? "Подтвержден" : "Не подтвержден"}</Badge>
@@ -265,6 +301,29 @@ function ReviewBlock({ title, items }: { title: string; items: string[] }) {
   );
 }
 
+function ClassificationBlock({ classification }: { classification: DocumentClassification }) {
+  return (
+    <div className="rounded-md border bg-slate-50 p-4">
+      <div className="font-medium">Классификация документа</div>
+      <div className="mt-2 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+        <div>Тип документа: {documentKindLabels[classification.documentKind]}</div>
+        <div>Уверенность: {classification.confidence}%</div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1">
+        {classification.matchedSignals.length > 0 ? (
+          classification.matchedSignals.map((signal) => (
+            <Badge key={signal} variant="outline" className="bg-white">
+              {signal}
+            </Badge>
+          ))
+        ) : (
+          <span className="text-sm text-muted-foreground">Классификационные признаки не найдены.</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Summary({ title, value }: { title: string; value: string | number }) {
   return (
     <div className="rounded-md border bg-slate-50 p-3">
@@ -300,8 +359,13 @@ function toProcessingRecord(document: NormalizedDocument): DocumentProcessingRec
     sectionCount: document.sections.length,
     tableCount: document.tables.length,
     listCount: document.lists.length,
+    classification: document.classification ?? createUnknownDocumentClassification(document.createdAt),
     confirmed: false
   };
+}
+
+function getRecordClassification(document: DocumentProcessingRecord) {
+  return document.classification ?? createUnknownDocumentClassification(document.createdAt);
 }
 
 function buildFoundItems(document: NormalizedDocument) {

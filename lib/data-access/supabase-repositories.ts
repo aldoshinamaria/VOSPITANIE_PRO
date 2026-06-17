@@ -31,6 +31,7 @@ import type {
   WorkProgramRow
 } from "@/lib/supabase/client";
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
+import { createUnknownDocumentClassification } from "@/lib/domain/document-processing/classifier";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { createId } from "@/lib/utils";
 import type { AppState } from "@/types/app-state";
@@ -594,7 +595,9 @@ class SupabaseAppRepository {
     }
 
     return {
-      processedDocuments: Array.isArray(data.processed_documents) ? (data.processed_documents as DocumentProcessingRecord[]) : [],
+      processedDocuments: Array.isArray(data.processed_documents)
+        ? (data.processed_documents as DocumentProcessingRecord[]).map(normalizeProcessedDocument)
+        : [],
       documentProcessingLogs: Array.isArray(data.logs) ? (data.logs as DocumentProcessingLogEntry[]) : []
     };
   }
@@ -1019,6 +1022,13 @@ function mapExtractedEventRow(row: ExtractedEventRow): ExtractedEvent {
     sourceType: normalizeImportedDocumentType(row.source_type),
     confidence: row.confidence,
     status: normalizeExtractedEventStatus(row.status)
+  };
+}
+
+function normalizeProcessedDocument(document: DocumentProcessingRecord): DocumentProcessingRecord {
+  return {
+    ...document,
+    classification: document.classification ?? createUnknownDocumentClassification(document.createdAt)
   };
 }
 

@@ -2,6 +2,7 @@ import { mockAppState } from "@/data/mock-data";
 import { migrateEventDirectionRelations, standardActivityDirections } from "@/lib/domain/activity-directions";
 import { migrateEventExecutions } from "@/lib/domain/event-execution";
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
+import { createUnknownDocumentClassification } from "@/lib/domain/document-processing/classifier";
 import { findModuleIdByTitle } from "@/lib/domain/modules";
 import { WORK_STATE_STORAGE_KEY } from "@/lib/data-access/storage-keys";
 import type {
@@ -16,6 +17,7 @@ import type {
   SocialPartner,
   WorkProgram
 } from "@/types/domain";
+import type { DocumentProcessingRecord } from "@/types/document-processing";
 
 export interface AppRepository {
   getState(): AppState;
@@ -103,7 +105,9 @@ export function migrateState(state: Partial<AppState>, fallbackState: AppState =
     importedDocuments: Array.isArray(state.importedDocuments) ? state.importedDocuments : fallbackState.importedDocuments,
     extractedEvents: Array.isArray(state.extractedEvents) ? state.extractedEvents : fallbackState.extractedEvents,
     normativeDocuments: Array.isArray(state.normativeDocuments) ? state.normativeDocuments : fallbackState.normativeDocuments,
-    processedDocuments: Array.isArray(state.processedDocuments) ? state.processedDocuments : fallbackState.processedDocuments,
+    processedDocuments: Array.isArray(state.processedDocuments)
+      ? state.processedDocuments.map(migrateProcessedDocument)
+      : fallbackState.processedDocuments,
     documentProcessingLogs: Array.isArray(state.documentProcessingLogs)
       ? state.documentProcessingLogs
       : fallbackState.documentProcessingLogs,
@@ -123,6 +127,13 @@ export function migrateState(state: Partial<AppState>, fallbackState: AppState =
     workProgram: isCurrentWorkProgram(state.workProgram)
       ? state.workProgram
       : createEmptyWorkProgram(migratedState as AppState)
+  };
+}
+
+function migrateProcessedDocument(document: DocumentProcessingRecord): DocumentProcessingRecord {
+  return {
+    ...document,
+    classification: document.classification ?? createUnknownDocumentClassification(document.createdAt)
   };
 }
 

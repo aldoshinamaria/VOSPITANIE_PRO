@@ -4,6 +4,27 @@ export type DocumentSourceType = "import" | "normative" | "work-program" | "kpvr
 
 export type DocumentValidationStatus = "excellent" | "good" | "needs_review" | "invalid" | "requires_ocr";
 
+export type DocumentKind =
+  | "federal_work_program"
+  | "federal_calendar_plan"
+  | "regional_document"
+  | "municipal_document"
+  | "local_school_document"
+  | "school_work_program"
+  | "kpvr"
+  | "extra_activity_plan"
+  | "social_passport"
+  | "development_program"
+  | "normative_document"
+  | "unknown";
+
+export interface DocumentClassification {
+  documentKind: DocumentKind;
+  confidence: number;
+  matchedSignals: string[];
+  classifiedAt: string;
+}
+
 export type DocumentProcessingLogLevel = "info" | "warning" | "error";
 
 export type DocumentProcessingStage =
@@ -70,6 +91,7 @@ export interface NormalizedDocument {
   qualityScore: number;
   validationStatus: DocumentValidationStatus;
   warnings: string[];
+  classification?: DocumentClassification;
 }
 
 export interface DocumentProcessingLogEntry {
@@ -97,6 +119,7 @@ export interface DocumentProcessingRecord {
   tableCount: number;
   listCount: number;
   confirmed: boolean;
+  classification: DocumentClassification;
 }
 
 export interface DocumentAnalysisPayload {

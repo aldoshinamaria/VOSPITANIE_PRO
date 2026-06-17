@@ -64,6 +64,10 @@ export interface DocumentValidator {
   validate(document: NormalizedDocument): Promise<NormalizedDocument>;
 }
 
+export interface DocumentClassifier {
+  classify(document: NormalizedDocument): Promise<NormalizedDocument>;
+}
+
 export interface DocumentAnalysisPreparation {
   prepare(document: NormalizedDocument): Promise<DocumentAnalysisPayload>;
 }

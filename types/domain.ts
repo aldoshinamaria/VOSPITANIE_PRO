@@ -73,6 +73,8 @@ export type {
 export type { EducationModule } from "@/types/modules";
 export type {
   DocumentAnalysisPayload,
+  DocumentClassification,
+  DocumentKind,
   DocumentProcessingLogEntry,
   DocumentProcessingLogLevel,
   DocumentProcessingRecord,

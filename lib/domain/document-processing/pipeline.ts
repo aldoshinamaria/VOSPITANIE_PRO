@@ -2,6 +2,7 @@ import type { AppMode } from "@/types/app-mode";
 import type { DocumentSourceType } from "@/types/document-processing";
 import type {
   DocumentAnalysisPreparation,
+  DocumentClassifier,
   DocumentNormalizer,
   DocumentProcessingLogger,
   DocumentProcessingPipeline,
@@ -10,6 +11,7 @@ import type {
   DocumentTextExtractor
 } from "./contracts";
 import { DefaultDocumentAnalysisPreparation } from "./analysis-preparation";
+import { createRuleBasedDocumentClassifier, createUnknownDocumentClassification } from "./classifier";
 import { InMemoryDocumentProcessingLogger } from "./logger";
 import { DefaultDocumentNormalizer } from "./normalizer";
 import { BrowserDocumentStorageLayer } from "./storage";
@@ -24,6 +26,7 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
     private readonly structureExtractor: DocumentStructureExtractor,
     private readonly normalizer: DocumentNormalizer,
     private readonly validator: QualityDocumentValidator,
+    private readonly classifier: DocumentClassifier,
     private readonly preparation: DocumentAnalysisPreparation,
     private readonly logger: DocumentProcessingLogger
   ) {}
@@ -87,7 +90,17 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
         message: `Качество: ${validated.validationStatus}, ${validated.qualityScore} баллов.`
       });
 
-      const analysisPayload = await this.preparation.prepare(validated);
+      const classified = await this.classifier.classify(validated);
+      const classification = classified.classification ?? createUnknownDocumentClassification();
+      this.logger.log({
+        documentId,
+        fileName: storedFile.fileName,
+        stage: "validated",
+        level: classification.documentKind === "unknown" ? "warning" : "info",
+        message: `РўРёРї РґРѕРєСѓРјРµРЅС‚Р°: ${classification.documentKind}, СѓРІРµСЂРµРЅРЅРѕСЃС‚СЊ ${classification.confidence}%.`
+      });
+
+      const analysisPayload = await this.preparation.prepare(classified);
       this.logger.log({
         documentId,
         fileName: storedFile.fileName,
@@ -97,7 +110,7 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
       });
 
       return {
-        normalizedDocument: validated,
+        normalizedDocument: classified,
         analysisPayload,
         logs: this.logger.list()
       };
@@ -121,6 +134,7 @@ export function createDocumentProcessingPipeline(mode: AppMode = "work"): Docume
     new RuleBasedDocumentStructureExtractor(),
     new DefaultDocumentNormalizer(),
     new QualityDocumentValidator(),
+    createRuleBasedDocumentClassifier(),
     new DefaultDocumentAnalysisPreparation(),
     new InMemoryDocumentProcessingLogger()
   );
