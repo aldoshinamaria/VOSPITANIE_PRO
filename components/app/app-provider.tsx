@@ -172,8 +172,8 @@ function getErrorMessage(error: unknown) {
 }
 
 function resolveMode(pathname: string | null): AppMode {
-  if (typeof window !== "undefined" && isPublicDemoHost(window.location.hostname)) {
-    return "demo";
+  if (pathname === "/work") {
+    return "work";
   }
 
   if (pathname === "/" || pathname === "") {
@@ -186,6 +186,10 @@ function resolveMode(pathname: string | null): AppMode {
 
   if (typeof window === "undefined") {
     return "work";
+  }
+
+  if (isPublicDemoHost(window.location.hostname) && window.localStorage.getItem(APP_MODE_STORAGE_KEY) !== "work") {
+    return "demo";
   }
 
   return window.localStorage.getItem(APP_MODE_STORAGE_KEY) === "demo" ? "demo" : "work";

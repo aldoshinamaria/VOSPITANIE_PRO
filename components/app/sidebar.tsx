@@ -16,7 +16,8 @@ export function Sidebar() {
   const [hasMounted, setHasMounted] = React.useState(false);
   const effectiveMode = pathname?.startsWith("/demo") ? "demo" : pathname === "/" ? "work" : mode;
   const visibleNavItems = React.useMemo(() => (hasMounted ? getNavItemsForMode(effectiveMode) : []), [effectiveMode, hasMounted]);
-  const homeHref = effectiveMode === "demo" ? "/demo" : "/";
+  const isPublicDemoHost = hasMounted && window.location.hostname === "vospitanie-pro.vercel.app";
+  const homeHref = effectiveMode === "demo" ? "/demo" : isPublicDemoHost ? "/work" : "/";
   const groupedItems = visibleNavItems.reduce(
     (groups, item) => {
       const group = groups.find((current) => current.title === item.group);
@@ -116,12 +117,13 @@ export function Sidebar() {
               </div>
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const href = isPublicDemoHost && effectiveMode === "work" && item.href === "/" ? "/work" : item.href;
+                const isActive = pathname === item.href || pathname === href;
 
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={href}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
