@@ -1,8 +1,11 @@
 import type { ImportedDocumentType } from "@/types/imported-documents";
+import type { SchoolEvent } from "@/types/events";
 
 export type DocumentSourceType = "import" | "normative" | "work-program" | "kpvr" | "local";
 
 export type DocumentValidationStatus = "excellent" | "good" | "needs_review" | "invalid" | "requires_ocr";
+
+export type DocumentPreviewSourceState = "extracted" | "manual" | "empty" | "rejected" | "edited";
 
 export type DocumentKind =
   | "federal_work_program"
@@ -12,6 +15,9 @@ export type DocumentKind =
   | "local_school_document"
   | "school_work_program"
   | "kpvr"
+  | "upbringing_plan"
+  | "regulation"
+  | "order"
   | "extra_activity_plan"
   | "social_passport"
   | "development_program"
@@ -30,6 +36,7 @@ export type DocumentEventPreviewCategory = "REAL_EVENT" | "WORK_FORMAT" | "ACTIV
 export interface DocumentEventPreview {
   id: string;
   title: string;
+  sourceState: DocumentPreviewSourceState;
   confidence: number;
   category: DocumentEventPreviewCategory;
   qualityScore: number;
@@ -44,6 +51,80 @@ export interface DocumentEventPreview {
   responsibleText: string;
   sourceFragment: string;
   matchedSignals: string[];
+}
+
+export type DocumentEntityPreviewKind =
+  | "school_data"
+  | "education_module"
+  | "association"
+  | "social_partner"
+  | "infrastructure"
+  | "responsible_person"
+  | "term"
+  | "education_level";
+
+export interface DocumentEntityPreview {
+  id: string;
+  kind: DocumentEntityPreviewKind;
+  title: string;
+  value: string;
+  sourceState: DocumentPreviewSourceState;
+  confidence: number;
+  sourceDocumentId: string;
+  sourceDocumentName: string;
+  sourceFragment: string;
+  matchedSignals: string[];
+}
+
+export interface DocumentStructuredPreview {
+  schoolData: DocumentEntityPreview[];
+  educationModules: DocumentEntityPreview[];
+  associations: DocumentEntityPreview[];
+  socialPartners: DocumentEntityPreview[];
+  infrastructure: DocumentEntityPreview[];
+  responsiblePersons: DocumentEntityPreview[];
+  terms: DocumentEntityPreview[];
+  educationLevels: DocumentEntityPreview[];
+  events: DocumentEventPreview[];
+}
+
+export type DocumentEventImportStatus = "IMPORTABLE" | "DUPLICATE" | "INCOMPLETE" | "SKIPPED";
+
+export interface DocumentEventImportBatch {
+  batchId: string;
+  createdAt: string;
+  documentIds: string[];
+  documentNames: string[];
+  importedBy: string;
+  previewEventCount: number;
+  importableCount: number;
+}
+
+export interface DocumentEventImportDryRunItem {
+  previewEvent: DocumentEventPreview;
+  status: DocumentEventImportStatus;
+  reason: string;
+  duplicateEventId?: string;
+  duplicateEventTitle?: string;
+}
+
+export interface DocumentEventImportDryRun {
+  items: DocumentEventImportDryRunItem[];
+  importableCount: number;
+  duplicateCount: number;
+  incompleteCount: number;
+  skippedCount: number;
+}
+
+export interface DocumentEventImportResult {
+  batch: DocumentEventImportBatch;
+  events: SchoolEvent[];
+  importedCount: number;
+  duplicateCount: number;
+  incompleteCount: number;
+  skippedCount: number;
+  importedEventIds: string[];
+  skippedPreviewEventIds: string[];
 }
 
 export type DocumentProcessingLogLevel = "info" | "warning" | "error";
@@ -114,6 +195,7 @@ export interface NormalizedDocument {
   warnings: string[];
   classification?: DocumentClassification;
   extractedEventPreview?: DocumentEventPreview[];
+  structuredPreview?: DocumentStructuredPreview;
 }
 
 export interface DocumentProcessingLogEntry {
@@ -143,6 +225,7 @@ export interface DocumentProcessingRecord {
   confirmed: boolean;
   classification: DocumentClassification;
   extractedEventPreview: DocumentEventPreview[];
+  structuredPreview: DocumentStructuredPreview;
 }
 
 export interface DocumentAnalysisPayload {

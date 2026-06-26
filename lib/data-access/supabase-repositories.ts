@@ -33,6 +33,7 @@ import type {
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
 import { createUnknownDocumentClassification } from "@/lib/domain/document-processing/classifier";
 import { migrateDocumentEventPreview } from "@/lib/domain/document-processing/event-preview-extractor";
+import { migrateDocumentStructuredPreview } from "@/lib/domain/document-processing/structured-preview-extractor";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { createId } from "@/lib/utils";
 import type { AppState } from "@/types/app-state";
@@ -1030,7 +1031,8 @@ function normalizeProcessedDocument(document: DocumentProcessingRecord): Documen
   return {
     ...document,
     classification: document.classification ?? createUnknownDocumentClassification(document.createdAt),
-    extractedEventPreview: migrateDocumentEventPreview(document.extractedEventPreview)
+    extractedEventPreview: migrateDocumentEventPreview(document.extractedEventPreview),
+    structuredPreview: migrateDocumentStructuredPreview(document.structuredPreview)
   };
 }
 

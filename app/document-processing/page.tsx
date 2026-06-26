@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle2, FileSearch, FileUp, ShieldAlert, TimerReset } from "lucide-react";
+import { CheckCircle2, FileSearch, FileUp, Pencil, ShieldAlert, TimerReset, Trash2, XCircle } from "lucide-react";
+import Link from "next/link";
 import * as React from "react";
 
 import { useAppState } from "@/components/app/app-provider";
@@ -13,19 +14,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { createUnknownDocumentClassification } from "@/lib/domain/document-processing/classifier";
+import { createDocumentEventPreviewImporter } from "@/lib/domain/document-processing/event-preview-importer";
 import { createDocumentProcessingPipeline } from "@/lib/domain/document-processing/pipeline";
 import type {
   DocumentClassification,
+  DocumentEntityPreview,
+  DocumentEntityPreviewKind,
+  DocumentEventImportDryRun,
+  DocumentEventImportDryRunItem,
+  DocumentEventImportResult,
+  DocumentEventImportStatus,
   DocumentEventPreview,
-  DocumentEventPreviewCategory,
   DocumentKind,
+  DocumentPreviewSourceState,
   DocumentProcessingLogEntry,
   DocumentProcessingRecord,
   DocumentSourceType,
+  DocumentStructuredPreview,
   DocumentValidationStatus,
   NormalizedDocument
-} from "@/types/domain";
+} from "@/types/document-processing";
 
 const sourceTypeLabels: Record<DocumentSourceType, string> = {
   import: "Импорт документов",
@@ -51,6 +61,9 @@ const documentKindLabels: Record<DocumentKind, string> = {
   local_school_document: "Локальный документ школы",
   school_work_program: "Рабочая программа школы",
   kpvr: "КПВР",
+  upbringing_plan: "План ВР",
+  regulation: "Положение",
+  order: "Приказ",
   extra_activity_plan: "План внеурочной деятельности",
   social_passport: "Социальный паспорт",
   development_program: "Программа развития",
@@ -58,21 +71,51 @@ const documentKindLabels: Record<DocumentKind, string> = {
   unknown: "Не определен"
 };
 
-const eventPreviewCategoryLabels: Record<DocumentEventPreviewCategory, string> = {
-  REAL_EVENT: "Мероприятие",
-  WORK_FORMAT: "Форма работы",
-  ACTIVITY_DIRECTION: "Направление",
-  NOISE: "Шум"
+const sourceStateLabels: Record<DocumentPreviewSourceState, string> = {
+  extracted: "Найдено",
+  manual: "Введено вручную",
+  empty: "Не найдено",
+  rejected: "Отклонено",
+  edited: "Изменено"
 };
+
+const importStatusLabels: Record<DocumentEventImportStatus, string> = {
+  IMPORTABLE: "Будет добавлено",
+  DUPLICATE: "Дубли",
+  INCOMPLETE: "Неполные",
+  SKIPPED: "Пропущено"
+};
+
+const entityGroups: Array<{
+  key: Exclude<keyof DocumentStructuredPreview, "events">;
+  title: string;
+  kind: DocumentEntityPreviewKind;
+  emptyTitle: string;
+}> = [
+  { key: "schoolData", title: "Паспорт школы", kind: "school_data", emptyTitle: "Поле паспорта школы" },
+  { key: "educationModules", title: "Модули воспитания", kind: "education_module", emptyTitle: "Модуль воспитания" },
+  { key: "associations", title: "Объединения", kind: "association", emptyTitle: "Объединение" },
+  { key: "socialPartners", title: "Социальные партнеры", kind: "social_partner", emptyTitle: "Социальный партнер" },
+  { key: "infrastructure", title: "Инфраструктура", kind: "infrastructure", emptyTitle: "Объект инфраструктуры" },
+  { key: "responsiblePersons", title: "Ответственные", kind: "responsible_person", emptyTitle: "Ответственный" },
+  { key: "educationLevels", title: "Уровни образования", kind: "education_level", emptyTitle: "Уровень образования" }
+];
 
 export default function DocumentProcessingPage() {
   const { mode, state, updateState, isSaving } = useAppState();
   const pipeline = React.useMemo(() => createDocumentProcessingPipeline(mode), [mode]);
+  const eventPreviewImporter = React.useMemo(() => createDocumentEventPreviewImporter(), []);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [sourceType, setSourceType] = React.useState<DocumentSourceType>("import");
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [selectedDocument, setSelectedDocument] = React.useState<NormalizedDocument | null>(null);
+  const [draftPreview, setDraftPreview] = React.useState<DocumentStructuredPreview | null>(null);
+  const [applyDocumentId, setApplyDocumentId] = React.useState<string | null>(null);
+  const [dryRun, setDryRun] = React.useState<DocumentEventImportDryRun | null>(null);
+  const [selectedPreviewEventIds, setSelectedPreviewEventIds] = React.useState<string[]>([]);
+  const [importReport, setImportReport] = React.useState<DocumentEventImportResult | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
 
   async function handleFiles(files: FileList | null) {
     const file = files?.[0];
@@ -83,13 +126,18 @@ export default function DocumentProcessingPage() {
 
     setIsProcessing(true);
     setError(null);
+    setMessage(null);
+    resetApplyState();
 
     try {
       await new Promise((resolve) => window.setTimeout(resolve, 0));
       const result = await pipeline.process(file, sourceType);
-      const record = toProcessingRecord(result.normalizedDocument);
+      const preview = createEditablePreview(result.normalizedDocument);
+      const normalizedDocument = { ...result.normalizedDocument, structuredPreview: preview };
+      const record = toProcessingRecord(normalizedDocument);
 
-      setSelectedDocument(result.normalizedDocument);
+      setSelectedDocument(normalizedDocument);
+      setDraftPreview(preview);
       await updateState((current) => ({
         ...current,
         processedDocuments: [record, ...current.processedDocuments.filter((item) => item.id !== record.id)],
@@ -105,35 +153,132 @@ export default function DocumentProcessingPage() {
     }
   }
 
-  async function confirmDocument(id: string) {
+  async function confirmDocument(id: string, preview?: DocumentStructuredPreview) {
     await updateState((current) => ({
       ...current,
       processedDocuments: current.processedDocuments.map((document) =>
-        document.id === id ? { ...document, confirmed: true } : document
+        document.id === id
+          ? {
+              ...document,
+              structuredPreview: preview ?? document.structuredPreview,
+              extractedEventPreview: preview?.events ?? document.extractedEventPreview,
+              confirmed: true
+            }
+          : document
       )
     }));
+    resetApplyState();
+    setMessage("Результат анализа подтвержден. Мероприятия можно применить в рабочий реестр после dry-run.");
+  }
+
+  function resetApplyState() {
+    setApplyDocumentId(null);
+    setDryRun(null);
+    setSelectedPreviewEventIds([]);
+    setImportReport(null);
+  }
+
+  function openApplyFlow(document: DocumentProcessingRecord) {
+    const nextDryRun = eventPreviewImporter.createDryRun([document], state.events);
+
+    setApplyDocumentId(document.id);
+    setDryRun(nextDryRun);
+    setImportReport(null);
+    setSelectedPreviewEventIds(
+      nextDryRun.items
+        .filter((item) => item.status === "IMPORTABLE")
+        .map((item) => item.previewEvent.id)
+    );
+  }
+
+  function togglePreviewEvent(id: string) {
+    setSelectedPreviewEventIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    );
+  }
+
+  function setAllImportableSelected(items: DocumentEventImportDryRunItem[], selected: boolean) {
+    setSelectedPreviewEventIds(
+      selected ? items.filter((item) => item.status === "IMPORTABLE").map((item) => item.previewEvent.id) : []
+    );
+  }
+
+  async function applySelectedEvents() {
+    if (!applyDocumentId || selectedPreviewEventIds.length === 0) {
+      return;
+    }
+
+    let nextReport: DocumentEventImportResult | null = null;
+    let nextDryRun: DocumentEventImportDryRun | null = null;
+
+    await updateState((current) => {
+      const document = current.processedDocuments.find((item) => item.id === applyDocumentId);
+
+      if (!document) {
+        return current;
+      }
+
+      const previewCount = document.extractedEventPreview?.length ?? 0;
+      const result = eventPreviewImporter.importSelected(selectedPreviewEventIds, [document], current.events);
+      nextReport = result;
+      nextDryRun = eventPreviewImporter.createDryRun([document], [...result.events, ...current.events]);
+
+      console.info("[document-processing] event import diagnostics", {
+        previewCount,
+        selectedCount: selectedPreviewEventIds.length,
+        importerEventCount: result.events.length,
+        previousEventsCount: current.events.length,
+        nextEventsCount: current.events.length + result.events.length
+      });
+
+      if (result.events.length === 0) {
+        return current;
+      }
+
+      return {
+        ...current,
+        events: [...result.events, ...current.events]
+      };
+    });
+
+    const report = nextReport as DocumentEventImportResult | null;
+    const refreshedDryRun = nextDryRun as DocumentEventImportDryRun | null;
+
+    if (report) {
+      setImportReport(report);
+      setDryRun(refreshedDryRun);
+      setSelectedPreviewEventIds([]);
+      setMessage(
+        `Добавлено мероприятий: ${report.importedCount}. Пропущено: ${
+          report.duplicateCount + report.incompleteCount + report.skippedCount
+        }.`
+      );
+    }
   }
 
   return (
     <>
       <PageHeader
-        title="Работа с документами"
-        description="Проверка DOCX, PDF и XLSX перед использованием в КПВР, рабочей программе, нормативных документах и пакетах для проверок."
+        title="Загрузка и анализ документов"
+        description="Загрузите рабочую программу, КПВР, планы, приказы или положения. Система найдет данные, покажет их для проверки, а вы сможете исправить и подтвердить результат"
       />
 
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard title="Обработано" value={state.processedDocuments.length} icon={FileSearch} />
-        <MetricCard title="Подтверждено" value={state.processedDocuments.filter((document) => document.confirmed).length} icon={CheckCircle2} />
+        <MetricCard title="Классифицировано" value={state.processedDocuments.filter((document) => document.classification.documentKind !== "unknown").length} icon={CheckCircle2} />
         <MetricCard title="Требуют проверки" value={state.processedDocuments.filter((document) => document.validationStatus === "needs_review").length} icon={ShieldAlert} />
-        <MetricCard title="Найдено записей" value={state.processedDocuments.reduce((sum, document) => sum + (document.extractedEventPreview ?? []).length, 0)} icon={TimerReset} />
+        <MetricCard title="Записей журнала" value={state.documentProcessingLogs.length} icon={TimerReset} />
       </div>
 
       {error ? <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
+      {message ? <div className="mt-5 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</div> : null}
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Проверить документ</CardTitle>
-          <CardDescription>Поддерживаются DOCX, текстовый PDF, XLSX. Сканированный PDF определяется автоматически и получает статус «Требуется OCR».</CardDescription>
+          <CardTitle>Загрузить документ</CardTitle>
+          <CardDescription>
+            Поддерживаются DOCX, текстовый PDF и XLSX. Данные сохраняются только как проверяемый preview и не попадают в паспорт школы, мероприятия, КПВР или другие рабочие разделы.
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[260px_1fr]">
           <label className="grid gap-2 text-sm font-medium">
@@ -148,8 +293,8 @@ export default function DocumentProcessingPage() {
           </label>
           <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed bg-slate-50 px-6 py-6 text-center transition-colors hover:bg-slate-100">
             <FileUp className="h-7 w-7 text-slate-500" />
-            <span className="mt-2 text-sm font-medium">{isProcessing ? "Документ проверяется..." : "Выберите DOCX, PDF или XLSX до 50 МБ"}</span>
-            <span className="mt-1 text-xs text-muted-foreground">Данные не попадут в КПВР, РПВ или нормативный центр без ручного подтверждения</span>
+            <span className="mt-2 text-sm font-medium">{isProcessing ? "Документ анализируется..." : "Выберите DOCX, PDF или XLSX до 50 МБ"}</span>
+            <span className="mt-1 text-xs text-muted-foreground">После анализа откроется редактируемый preview найденных данных.</span>
             <Input
               ref={inputRef}
               type="file"
@@ -162,22 +307,32 @@ export default function DocumentProcessingPage() {
         </CardContent>
       </Card>
 
-      {selectedDocument ? (
-        <DocumentReview document={selectedDocument} onConfirm={() => confirmDocument(selectedDocument.id)} />
+      {selectedDocument && draftPreview ? (
+        <DocumentReview
+          document={selectedDocument}
+          preview={draftPreview}
+          setPreview={setDraftPreview}
+          onConfirm={() => confirmDocument(selectedDocument.id, draftPreview)}
+        />
       ) : null}
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Индекс обработанных документов</CardTitle>
-            <CardDescription>Здесь хранятся только результаты проверки и подтверждения, а не автоматические изменения данных школы.</CardDescription>
+            <CardTitle>Обработанные документы</CardTitle>
+            <CardDescription>Здесь хранится результат анализа: классификация, качество и подтвержденный preview.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             {state.processedDocuments.length === 0 ? (
-              <EmptyState icon={FileSearch} title="Документы еще не проверялись" description="Загрузите DOCX, PDF или XLSX, чтобы увидеть качество распознавания структуры документа." />
+              <EmptyState icon={FileSearch} title="Документы еще не загружались" description="Загрузите DOCX, PDF или XLSX, чтобы увидеть классификацию и preview." />
             ) : (
               state.processedDocuments.map((document) => (
-                <ProcessedDocumentCard key={document.id} document={document} onConfirm={() => confirmDocument(document.id)} />
+                <ProcessedDocumentCard
+                  key={document.id}
+                  document={document}
+                  onConfirm={() => confirmDocument(document.id, document.structuredPreview)}
+                  onApply={() => openApplyFlow(document)}
+                />
               ))
             )}
           </CardContent>
@@ -185,62 +340,352 @@ export default function DocumentProcessingPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Журнал проверки</CardTitle>
-            <CardDescription>Пользователь видит, когда документ загружен, проверен, какие были предупреждения и ошибки.</CardDescription>
+            <CardTitle>Журнал обработки</CardTitle>
+            <CardDescription>Показывает этапы: загрузка, извлечение текста, структура, нормализация, валидация, классификация и preview.</CardDescription>
           </CardHeader>
           <CardContent className="grid max-h-[520px] gap-3 overflow-auto">
             {state.documentProcessingLogs.length === 0 ? (
-              <EmptyState icon={TimerReset} title="Журнал пуст" description="Записи появятся после первой проверки документа." />
+              <EmptyState icon={TimerReset} title="Журнал пуст" description="Записи появятся после первой обработки документа." />
             ) : (
               state.documentProcessingLogs.map((entry) => <LogEntry key={entry.id} entry={entry} />)
             )}
           </CardContent>
         </Card>
       </div>
+
+      {dryRun ? (
+        <EventApplyPanel
+          dryRun={dryRun}
+          selectedPreviewEventIds={selectedPreviewEventIds}
+          importReport={importReport}
+          isSaving={isSaving}
+          onToggle={togglePreviewEvent}
+          onSelectAll={(selected) => setAllImportableSelected(dryRun.items, selected)}
+          onApply={applySelectedEvents}
+        />
+      ) : null}
     </>
   );
 }
 
-function DocumentReview({ document, onConfirm }: { document: NormalizedDocument; onConfirm: () => void }) {
+function DocumentReview({
+  document,
+  preview,
+  setPreview,
+  onConfirm
+}: {
+  document: NormalizedDocument;
+  preview: DocumentStructuredPreview;
+  setPreview: React.Dispatch<React.SetStateAction<DocumentStructuredPreview | null>>;
+  onConfirm: () => void;
+}) {
   return (
     <Card className="mt-6">
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle>Экран проверки: {document.title}</CardTitle>
-            <CardDescription>Перед использованием пользователь должен проверить качество найденного текста и подтвердить документ вручную.</CardDescription>
+            <CardTitle>Редактируемый preview: {document.title}</CardTitle>
+            <CardDescription>Исправьте найденные данные, удалите лишнее, отклоните сомнительное или добавьте недостающее вручную.</CardDescription>
           </div>
           <ValidationBadge status={document.validationStatus} score={document.qualityScore} />
         </div>
       </CardHeader>
       <CardContent className="grid gap-5">
-        <div className="grid gap-3 md:grid-cols-4">
-          <Summary title="Символов" value={document.metadata.characterCount} />
-          <Summary title="Разделов" value={document.sections.length} />
-          <Summary title="Таблиц" value={document.tables.length} />
-          <Summary title="Списков" value={document.lists.length} />
-        </div>
-        <ReviewBlock title="Что найдено" items={buildFoundItems(document)} />
-        <ClassificationBlock classification={document.classification ?? createUnknownDocumentClassification()} />
-        <EventPreviewBlock events={document.extractedEventPreview ?? []} />
-        <ReviewBlock title="Что не удалось найти" items={buildMissingItems(document)} />
-        <ReviewBlock title="Что вызывает сомнения" items={document.warnings.length > 0 ? document.warnings : ["Критичных сомнений не обнаружено."]} />
-        <ReviewBlock title="Что требует ручной проверки" items={buildManualReviewItems(document)} />
-        <div className="rounded-md border bg-slate-50 p-4">
-          <div className="mb-2 font-medium">Предпросмотр текста</div>
-          <p className="max-h-56 overflow-auto whitespace-pre-wrap text-sm leading-6 text-slate-700">{document.text.slice(0, 4000) || "Текст отсутствует."}</p>
-        </div>
+        <DocumentMetadataGrid document={document} />
+        <ClassificationBlock classification={document.classification ?? createUnknownDocumentClassification(document.createdAt)} />
+        <EditableStructuredPreview preview={preview} setPreview={setPreview} document={document} />
+        <TextPreview document={document} />
         <Button onClick={onConfirm} disabled={document.validationStatus === "invalid" || document.validationStatus === "requires_ocr"}>
           <CheckCircle2 className="h-4 w-4" />
-          Подтвердить данные документа
+          Подтвердить результат анализа
         </Button>
       </CardContent>
     </Card>
   );
 }
 
-function ProcessedDocumentCard({ document, onConfirm }: { document: DocumentProcessingRecord; onConfirm: () => void }) {
-  const classification = getRecordClassification(document);
+function EditableStructuredPreview({
+  preview,
+  setPreview,
+  document
+}: {
+  preview: DocumentStructuredPreview;
+  setPreview: React.Dispatch<React.SetStateAction<DocumentStructuredPreview | null>>;
+  document: NormalizedDocument;
+}) {
+  function updateEntity(groupKey: Exclude<keyof DocumentStructuredPreview, "events">, id: string, patch: Partial<DocumentEntityPreview>) {
+    setPreview((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        [groupKey]: current[groupKey].map((item) => (item.id === id ? { ...item, ...patch } : item))
+      };
+    });
+  }
+
+  function removeEntity(groupKey: Exclude<keyof DocumentStructuredPreview, "events">, id: string) {
+    setPreview((current) => current ? { ...current, [groupKey]: current[groupKey].filter((item) => item.id !== id) } : current);
+  }
+
+  function addEntity(groupKey: Exclude<keyof DocumentStructuredPreview, "events">, kind: DocumentEntityPreviewKind, title: string) {
+    setPreview((current) => current ? { ...current, [groupKey]: [...current[groupKey], createManualEntity(document, kind, title)] } : current);
+  }
+
+  function updateEvent(id: string, patch: Partial<DocumentEventPreview>) {
+    setPreview((current) => current ? { ...current, events: current.events.map((event) => (event.id === id ? { ...event, ...patch } : event)) } : current);
+  }
+
+  function removeEvent(id: string) {
+    setPreview((current) => current ? { ...current, events: current.events.filter((event) => event.id !== id) } : current);
+  }
+
+  function addEvent() {
+    setPreview((current) => current ? { ...current, events: [...current.events, createManualEvent(document)] } : current);
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div className="rounded-md border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+        Preview можно редактировать и подтверждать, но он не импортируется в рабочие разделы. Это подготовка к следующему этапу безопасного импорта.
+      </div>
+
+      {entityGroups.map((group) => (
+        <Card key={group.key}>
+          <CardHeader className="gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle>{group.title}</CardTitle>
+              <CardDescription>{preview[group.key].length} записей</CardDescription>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={() => addEntity(group.key, group.kind, group.emptyTitle)}>
+              Добавить вручную
+            </Button>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {preview[group.key].length === 0 ? (
+              <EmptyState icon={FileSearch} title="Данные не найдены" description="Добавьте запись вручную, если она есть в документе." />
+            ) : (
+              preview[group.key].map((item) => (
+                <EditableEntityCard
+                  key={item.id}
+                  item={item}
+                  onChange={(patch) => updateEntity(group.key, item.id, patch)}
+                  onDelete={() => removeEntity(group.key, item.id)}
+                  onReject={() => updateEntity(group.key, item.id, { sourceState: "rejected" })}
+                  onConfirm={() => updateEntity(group.key, item.id, { sourceState: item.value ? item.sourceState : "empty" })}
+                />
+              ))
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      <Card>
+        <CardHeader className="gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <CardTitle>Мероприятия</CardTitle>
+            <CardDescription>{preview.events.length} записей preview</CardDescription>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={addEvent}>
+            Добавить мероприятие вручную
+          </Button>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          {preview.events.length === 0 ? (
+            <EmptyState icon={FileSearch} title="Мероприятия не найдены" description="Добавьте мероприятие вручную, если оно есть в документе." />
+          ) : (
+            preview.events.map((event) => (
+              <EditableEventCard
+                key={event.id}
+                event={event}
+                onChange={(patch) => updateEvent(event.id, patch)}
+                onDelete={() => removeEvent(event.id)}
+                onReject={() => updateEvent(event.id, { sourceState: "rejected" })}
+                onConfirm={() => updateEvent(event.id, { sourceState: event.title ? event.sourceState : "empty" })}
+              />
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function EditableEntityCard({
+  item,
+  onChange,
+  onDelete,
+  onReject,
+  onConfirm
+}: {
+  item: DocumentEntityPreview;
+  onChange: (patch: Partial<DocumentEntityPreview>) => void;
+  onDelete: () => void;
+  onReject: () => void;
+  onConfirm: () => void;
+}) {
+  const isRejected = item.sourceState === "rejected";
+
+  return (
+    <div className={`rounded-md border p-3 ${isRejected ? "bg-rose-50 opacity-80" : "bg-white"}`}>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={item.sourceState === "empty" ? "warning" : item.sourceState === "rejected" ? "secondary" : "outline"}>
+            {sourceStateLabels[item.sourceState]}
+          </Badge>
+          <span className="text-xs text-muted-foreground">Уверенность: {item.confidence}%</span>
+        </div>
+        <PreviewActions onEdit={() => onChange({ sourceState: item.sourceState === "empty" ? "manual" : "edited" })} onDelete={onDelete} onReject={onReject} onConfirm={onConfirm} />
+      </div>
+      <div className="grid gap-3 md:grid-cols-[220px_1fr]">
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium">Поле</span>
+          <Input
+            value={item.title}
+            onChange={(event) => onChange({ title: event.target.value, sourceState: item.sourceState === "empty" ? "manual" : "edited" })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium">Значение</span>
+          <Input
+            value={item.value}
+            placeholder="Не найдено в документе. Заполните вручную при необходимости"
+            onChange={(event) => onChange({ value: event.target.value, sourceState: item.sourceState === "empty" ? "manual" : "edited" })}
+          />
+        </label>
+      </div>
+      <div className="mt-2 text-xs text-muted-foreground">{item.sourceFragment}</div>
+    </div>
+  );
+}
+
+function EditableEventCard({
+  event,
+  onChange,
+  onDelete,
+  onReject,
+  onConfirm
+}: {
+  event: DocumentEventPreview;
+  onChange: (patch: Partial<DocumentEventPreview>) => void;
+  onDelete: () => void;
+  onReject: () => void;
+  onConfirm: () => void;
+}) {
+  const isRejected = event.sourceState === "rejected";
+
+  return (
+    <div className={`rounded-md border p-3 ${isRejected ? "bg-rose-50 opacity-80" : "bg-white"}`}>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={event.sourceState === "empty" ? "warning" : event.sourceState === "rejected" ? "secondary" : "outline"}>
+            {sourceStateLabels[event.sourceState]}
+          </Badge>
+          <Badge variant={event.category === "REAL_EVENT" ? "success" : event.category === "NOISE" ? "secondary" : "warning"}>
+            {event.category}
+          </Badge>
+          <span className="text-xs text-muted-foreground">Качество: {event.qualityScore}%</span>
+        </div>
+        <PreviewActions onEdit={() => onChange({ sourceState: event.sourceState === "empty" ? "manual" : "edited" })} onDelete={onDelete} onReject={onReject} onConfirm={onConfirm} />
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="grid gap-1 text-sm md:col-span-2">
+          <span className="font-medium">Название мероприятия</span>
+          <Input
+            value={event.title}
+            placeholder="Название мероприятия"
+            onChange={(inputEvent) => onChange({ title: inputEvent.target.value, sourceState: event.sourceState === "empty" ? "manual" : "edited" })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium">Срок</span>
+          <Input
+            value={event.dateText}
+            placeholder="Не найдено в документе"
+            onChange={(inputEvent) => onChange({ dateText: inputEvent.target.value, sourceState: event.sourceState === "empty" ? "manual" : "edited" })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium">Уровень образования</span>
+          <Input
+            value={event.educationLevels.join(", ")}
+            placeholder="НОО, ООО или СОО"
+            onChange={(inputEvent) => onChange({ educationLevels: splitCsv(inputEvent.target.value), sourceState: event.sourceState === "empty" ? "manual" : "edited" })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium">Классы</span>
+          <Input
+            value={event.classesText}
+            placeholder="Например: 1-4 классы"
+            onChange={(inputEvent) => onChange({ classesText: inputEvent.target.value, sourceState: event.sourceState === "empty" ? "manual" : "edited" })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium">Ответственный</span>
+          <Input
+            value={event.responsibleText}
+            placeholder="Не найдено в документе"
+            onChange={(inputEvent) => onChange({ responsibleText: inputEvent.target.value, sourceState: event.sourceState === "empty" ? "manual" : "edited" })}
+          />
+        </label>
+      </div>
+      <label className="mt-3 grid gap-1 text-sm">
+        <span className="font-medium">Фрагмент документа</span>
+        <Textarea
+          value={event.sourceFragment}
+          onChange={(inputEvent) => onChange({ sourceFragment: inputEvent.target.value, sourceState: event.sourceState === "empty" ? "manual" : "edited" })}
+        />
+      </label>
+      <div className="mt-2 text-xs text-muted-foreground">{event.qualityReason}</div>
+    </div>
+  );
+}
+
+function PreviewActions({
+  onEdit,
+  onDelete,
+  onReject,
+  onConfirm
+}: {
+  onEdit: () => void;
+  onDelete: () => void;
+  onReject: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button type="button" size="sm" variant="outline" onClick={onEdit}>
+        <Pencil className="h-4 w-4" />
+        Редактировать
+      </Button>
+      <Button type="button" size="sm" variant="outline" onClick={onDelete}>
+        <Trash2 className="h-4 w-4" />
+        Удалить
+      </Button>
+      <Button type="button" size="sm" variant="outline" onClick={onReject}>
+        <XCircle className="h-4 w-4" />
+        Отклонить
+      </Button>
+      <Button type="button" size="sm" onClick={onConfirm}>
+        <CheckCircle2 className="h-4 w-4" />
+        Подтвердить
+      </Button>
+    </div>
+  );
+}
+
+function ProcessedDocumentCard({
+  document,
+  onConfirm,
+  onApply
+}: {
+  document: DocumentProcessingRecord;
+  onConfirm: () => void;
+  onApply: () => void;
+}) {
+  const classification = document.classification ?? createUnknownDocumentClassification(document.createdAt);
+  const preview = document.structuredPreview;
+  const previewCount = countStructuredPreviewItems(preview);
 
   return (
     <div className="rounded-md border p-4">
@@ -253,7 +698,8 @@ function ProcessedDocumentCard({ document, onConfirm }: { document: DocumentProc
         </div>
         <ValidationBadge status={document.validationStatus} score={document.qualityScore} />
       </div>
-      <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+      <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-4">
+        <div>Текст: {document.textLength} симв.</div>
         <div>Разделов: {document.sectionCount}</div>
         <div>Таблиц: {document.tableCount}</div>
         <div>Списков: {document.listCount}</div>
@@ -261,29 +707,235 @@ function ProcessedDocumentCard({ document, onConfirm }: { document: DocumentProc
       <div className="mt-3 rounded-md border bg-slate-50 p-3 text-sm">
         <div className="font-medium">Тип документа: {documentKindLabels[classification.documentKind]}</div>
         <div className="mt-1 text-muted-foreground">Уверенность: {classification.confidence}%</div>
-        <div className="mt-2 flex flex-wrap gap-1">
-          {classification.matchedSignals.length > 0 ? (
-            classification.matchedSignals.map((signal) => (
-              <Badge key={signal} variant="outline" className="bg-white">
-                {signal}
-              </Badge>
-            ))
-          ) : (
-            <span className="text-muted-foreground">Признаки не найдены.</span>
-          )}
-        </div>
+        <SignalList signals={classification.matchedSignals} />
       </div>
-      <div className="mt-3">
-        <EventPreviewBlock events={document.extractedEventPreview} compact />
-      </div>
+      <div className="mt-3 text-sm text-muted-foreground">Preview-сущностей найдено: {previewCount}</div>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Badge variant={document.confirmed ? "success" : "outline"}>{document.confirmed ? "Подтвержден" : "Не подтвержден"}</Badge>
+        <Badge variant={document.confirmed ? "success" : "outline"}>{document.confirmed ? "Результат анализа подтвержден" : "Preview"}</Badge>
         {!document.confirmed && document.validationStatus !== "invalid" && document.validationStatus !== "requires_ocr" ? (
           <Button size="sm" variant="outline" onClick={onConfirm}>
-            Подтвердить
+            Подтвердить результат анализа
+          </Button>
+        ) : null}
+        {document.confirmed ? (
+          <Button size="sm" onClick={onApply}>
+            Применить данные в систему
           </Button>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function EventApplyPanel({
+  dryRun,
+  selectedPreviewEventIds,
+  importReport,
+  isSaving,
+  onToggle,
+  onSelectAll,
+  onApply
+}: {
+  dryRun: DocumentEventImportDryRun;
+  selectedPreviewEventIds: string[];
+  importReport: DocumentEventImportResult | null;
+  isSaving: boolean;
+  onToggle: (id: string) => void;
+  onSelectAll: (selected: boolean) => void;
+  onApply: () => void;
+}) {
+  const importableItems = dryRun.items.filter((item) => item.status === "IMPORTABLE");
+  const allImportableSelected =
+    importableItems.length > 0 && importableItems.every((item) => selectedPreviewEventIds.includes(item.previewEvent.id));
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>Dry-run применения мероприятий</CardTitle>
+        <CardDescription>
+          Перед записью в рабочий реестр система показывает, что будет добавлено, что похоже на дубли и что будет пропущено.
+          Без кнопки «Применить выбранные» данные в events не меняются.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-5">
+        <div className="grid gap-3 md:grid-cols-4">
+          <Summary title="Будет добавлено" value={dryRun.importableCount} />
+          <Summary title="Дубли" value={dryRun.duplicateCount} />
+          <Summary title="Неполные" value={dryRun.incompleteCount} />
+          <Summary title="Пропущено" value={dryRun.skippedCount} />
+        </div>
+
+        {importableItems.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => onSelectAll(!allImportableSelected)}>
+              {allImportableSelected ? "Снять выделение" : "Выбрать все IMPORTABLE"}
+            </Button>
+            <Button type="button" size="sm" disabled={isSaving || selectedPreviewEventIds.length === 0} onClick={onApply}>
+              Применить выбранные
+            </Button>
+          </div>
+        ) : null}
+
+        {(["IMPORTABLE", "DUPLICATE", "INCOMPLETE", "SKIPPED"] as DocumentEventImportStatus[]).map((status) => (
+          <DryRunSection
+            key={status}
+            title={importStatusLabels[status]}
+            status={status}
+            items={dryRun.items.filter((item) => item.status === status)}
+            selectedPreviewEventIds={selectedPreviewEventIds}
+            onToggle={onToggle}
+          />
+        ))}
+
+        {importReport ? (
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+            <div className="font-semibold">Импорт завершен</div>
+            <div className="mt-1">Добавлено мероприятий: {importReport.importedCount}</div>
+            <div>Пропущено: {importReport.duplicateCount + importReport.incompleteCount + importReport.skippedCount}</div>
+            <Button asChild className="mt-3" size="sm">
+              <Link href="/events">Открыть мероприятия</Link>
+            </Button>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function DryRunSection({
+  title,
+  status,
+  items,
+  selectedPreviewEventIds,
+  onToggle
+}: {
+  title: string;
+  status: DocumentEventImportStatus;
+  items: DocumentEventImportDryRunItem[];
+  selectedPreviewEventIds: string[];
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <div className="rounded-md border">
+      <div className="flex items-center justify-between border-b bg-slate-50 px-4 py-3">
+        <div className="font-medium">{title}</div>
+        <Badge variant={status === "IMPORTABLE" ? "success" : status === "DUPLICATE" ? "warning" : "outline"}>
+          {items.length}
+        </Badge>
+      </div>
+      <div className="grid gap-3 p-4">
+        {items.length === 0 ? (
+          <div className="text-sm text-muted-foreground">Записей нет.</div>
+        ) : (
+          items.map((item) => (
+            <DryRunItem
+              key={item.previewEvent.id}
+              item={item}
+              checked={selectedPreviewEventIds.includes(item.previewEvent.id)}
+              onToggle={() => onToggle(item.previewEvent.id)}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DryRunItem({
+  item,
+  checked,
+  onToggle
+}: {
+  item: DocumentEventImportDryRunItem;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  const event = item.previewEvent;
+
+  return (
+    <div className="rounded-md border bg-white p-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <label className="flex gap-3">
+          {item.status === "IMPORTABLE" ? (
+            <input type="checkbox" className="mt-1 h-4 w-4" checked={checked} onChange={onToggle} />
+          ) : null}
+          <span>
+            <span className="block font-medium">{event.title}</span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {event.sourceDocumentName} · качество {event.qualityScore}% · уверенность {event.confidence}%
+            </span>
+          </span>
+        </label>
+        <Badge variant={item.status === "IMPORTABLE" ? "success" : item.status === "DUPLICATE" ? "warning" : "outline"}>
+          {item.status}
+        </Badge>
+      </div>
+      <div className="mt-2 grid gap-1 text-sm text-muted-foreground md:grid-cols-3">
+        <div>Срок: {event.dateText || "не найден"}</div>
+        <div>Уровни: {event.educationLevels.join(", ") || "не найдены"}</div>
+        <div>Ответственный: {event.responsibleText || "не найден"}</div>
+      </div>
+      <div className="mt-2 text-sm">{item.reason}</div>
+      {item.duplicateEventTitle ? (
+        <div className="mt-1 text-xs text-amber-700">Возможный дубль: {item.duplicateEventTitle}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function DocumentMetadataGrid({ document }: { document: NormalizedDocument }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-4">
+      <Summary title="Тип файла" value={document.fileType.toUpperCase()} />
+      <Summary title="Символов" value={document.metadata.characterCount} />
+      <Summary title="Разделов" value={document.sections.length} />
+      <Summary title="Таблиц" value={document.tables.length} />
+      <Summary title="Списков" value={document.lists.length} />
+      <Summary title="Страниц" value={document.metadata.pageCount ?? "—"} />
+      <Summary title="Листов XLSX" value={document.metadata.sheetCount ?? "—"} />
+      <Summary title="MIME" value={document.metadata.mimeType || "не определен"} />
+    </div>
+  );
+}
+
+function ClassificationBlock({ classification }: { classification: DocumentClassification }) {
+  return (
+    <div className="rounded-md border bg-slate-50 p-4">
+      <div className="font-medium">Классификация документа</div>
+      <div className="mt-2 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+        <div>Тип документа: {documentKindLabels[classification.documentKind]}</div>
+        <div>Уверенность: {classification.confidence}%</div>
+      </div>
+      <SignalList signals={classification.matchedSignals} />
+    </div>
+  );
+}
+
+function SignalList({ signals }: { signals: string[] }) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-1">
+      {signals.length > 0 ? (
+        signals.map((signal) => (
+          <Badge key={signal} variant="outline" className="bg-white">
+            {signal}
+          </Badge>
+        ))
+      ) : (
+        <span className="text-sm text-muted-foreground">Признаки не найдены. Документ требует ручной проверки.</span>
+      )}
+    </div>
+  );
+}
+
+function TextPreview({ document }: { document: NormalizedDocument }) {
+  const previewText = document.text.slice(0, 4000);
+
+  return (
+    <div className="rounded-md border bg-slate-50 p-4">
+      <div className="mb-2 font-medium">Preview текста</div>
+      <p className="max-h-56 overflow-auto whitespace-pre-wrap text-sm leading-6 text-slate-700">
+        {previewText || "Текст отсутствует или документ требует OCR."}
+      </p>
     </div>
   );
 }
@@ -301,108 +953,11 @@ function LogEntry({ entry }: { entry: DocumentProcessingLogEntry }) {
   );
 }
 
-function ReviewBlock({ title, items }: { title: string; items: string[] }) {
-  return (
-    <div className="rounded-md border p-4">
-      <div className="font-medium">{title}</div>
-      <ul className="mt-2 grid gap-1 text-sm text-muted-foreground">
-        {items.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function ClassificationBlock({ classification }: { classification: DocumentClassification }) {
-  return (
-    <div className="rounded-md border bg-slate-50 p-4">
-      <div className="font-medium">Классификация документа</div>
-      <div className="mt-2 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-        <div>Тип документа: {documentKindLabels[classification.documentKind]}</div>
-        <div>Уверенность: {classification.confidence}%</div>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-1">
-        {classification.matchedSignals.length > 0 ? (
-          classification.matchedSignals.map((signal) => (
-            <Badge key={signal} variant="outline" className="bg-white">
-              {signal}
-            </Badge>
-          ))
-        ) : (
-          <span className="text-sm text-muted-foreground">Классификационные признаки не найдены.</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function EventPreviewBlock({ events, compact = false }: { events: DocumentEventPreview[]; compact?: boolean }) {
-  const visibleEvents = compact ? events.slice(0, 5) : events.slice(0, 15);
-  const summary = getEventPreviewSummary(events);
-
-  return (
-    <div className="rounded-md border bg-white p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="font-medium">Найдено записей: {events.length}</div>
-        <Badge variant={events.length > 0 ? "success" : "outline"}>{events.length > 0 ? "preview only" : "не найдено"}</Badge>
-      </div>
-      <div className="mt-3 grid gap-2 text-xs sm:grid-cols-4">
-        {Object.entries(eventPreviewCategoryLabels).map(([category, label]) => (
-          <div key={category} className="rounded-md border bg-slate-50 px-3 py-2">
-            <div className="text-muted-foreground">{label}</div>
-            <div className="mt-1 text-lg font-semibold text-slate-900">{summary[category as DocumentEventPreviewCategory]}</div>
-          </div>
-        ))}
-      </div>
-      {visibleEvents.length === 0 ? (
-        <p className="mt-2 text-sm text-muted-foreground">Кандидаты не найдены. Данные в реестр мероприятий не импортируются.</p>
-      ) : (
-        <div className="mt-3 grid gap-3">
-          {visibleEvents.map((event) => (
-            <div key={event.id} className="rounded-md border bg-slate-50 p-3 text-sm">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="font-medium text-slate-900">{event.title}</div>
-                <div className="flex flex-wrap gap-1">
-                  <Badge variant={event.category === "REAL_EVENT" ? "success" : event.category === "NOISE" ? "secondary" : "outline"} className="bg-white">
-                    {eventPreviewCategoryLabels[event.category]}
-                  </Badge>
-                  <Badge variant="outline" className="bg-white">
-                    {event.qualityScore}%
-                  </Badge>
-                </div>
-              </div>
-              <div className="mt-2 grid gap-1 text-xs text-muted-foreground md:grid-cols-2">
-                <div>Источник: {event.sourceDocumentName}</div>
-                <div>Месяц: {formatPreviewMonth(event.month)}</div>
-                <div>Уровень: {event.educationLevels.length > 0 ? event.educationLevels.join(", ") : "не определен"}</div>
-                <div>Ответственный: {event.responsibleText || "не определен"}</div>
-              </div>
-              <div className="mt-2 text-xs text-slate-700">Оценка: {event.qualityReason}</div>
-              <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600">{event.sourceFragment}</p>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {event.matchedSignals.map((signal) => (
-                  <Badge key={signal} variant="outline" className="bg-white">
-                    {signal}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          ))}
-          {events.length > visibleEvents.length ? (
-            <div className="text-xs text-muted-foreground">Показаны первые {visibleEvents.length} из {events.length}. Полный список хранится в preview документа.</div>
-          ) : null}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function Summary({ title, value }: { title: string; value: string | number }) {
   return (
     <div className="rounded-md border bg-slate-50 p-3">
       <div className="text-xs text-muted-foreground">{title}</div>
-      <div className="mt-1 text-xl font-semibold">{value}</div>
+      <div className="mt-1 break-words text-lg font-semibold">{value}</div>
     </div>
   );
 }
@@ -434,72 +989,121 @@ function toProcessingRecord(document: NormalizedDocument): DocumentProcessingRec
     tableCount: document.tables.length,
     listCount: document.lists.length,
     classification: document.classification ?? createUnknownDocumentClassification(document.createdAt),
-    extractedEventPreview: document.extractedEventPreview ?? [],
+    extractedEventPreview: document.structuredPreview?.events ?? document.extractedEventPreview ?? [],
+    structuredPreview: document.structuredPreview ?? createEmptyStructuredPreview(),
     confirmed: false
   };
 }
 
-function getRecordClassification(document: DocumentProcessingRecord) {
-  return document.classification ?? createUnknownDocumentClassification(document.createdAt);
+function createEditablePreview(document: NormalizedDocument): DocumentStructuredPreview {
+  return normalizeStructuredPreview(document.structuredPreview ?? createEmptyStructuredPreview(), document);
 }
 
-function getEventPreviewSummary(events: DocumentEventPreview[]): Record<DocumentEventPreviewCategory, number> {
-  return events.reduce<Record<DocumentEventPreviewCategory, number>>(
-    (summary, event) => ({
-      ...summary,
-      [event.category]: summary[event.category] + 1
-    }),
-    {
-      REAL_EVENT: 0,
-      WORK_FORMAT: 0,
-      ACTIVITY_DIRECTION: 0,
-      NOISE: 0
-    }
+function normalizeStructuredPreview(preview: DocumentStructuredPreview, document: NormalizedDocument): DocumentStructuredPreview {
+  return {
+    schoolData: ensureRequiredSchoolData(preview.schoolData, document),
+    educationModules: normalizeEntities(preview.educationModules),
+    associations: normalizeEntities(preview.associations),
+    socialPartners: normalizeEntities(preview.socialPartners),
+    infrastructure: normalizeEntities(preview.infrastructure),
+    responsiblePersons: normalizeEntities(preview.responsiblePersons),
+    terms: normalizeEntities(preview.terms),
+    educationLevels: normalizeEntities(preview.educationLevels),
+    events: preview.events.map((event) => ({ ...event, sourceState: event.sourceState ?? "extracted" }))
+  };
+}
+
+function ensureRequiredSchoolData(items: DocumentEntityPreview[], document: NormalizedDocument) {
+  const required = ["Название школы", "Муниципалитет", "Регион", "Директор", "Заместитель директора по ВР", "Учебный год"];
+  const normalizedItems = normalizeEntities(items);
+  const existing = new Set(normalizedItems.map((item) => normalizeText(item.title)));
+  const missing = required
+    .filter((title) => !existing.has(normalizeText(title)))
+    .map((title) => createManualEntity(document, "school_data", title, "empty"));
+
+  return [...normalizedItems, ...missing];
+}
+
+function normalizeEntities(items: DocumentEntityPreview[]) {
+  return items.map((item) => ({ ...item, sourceState: item.sourceState ?? (item.value ? "extracted" : "empty") }));
+}
+
+function createEmptyStructuredPreview(): DocumentStructuredPreview {
+  return {
+    schoolData: [],
+    educationModules: [],
+    associations: [],
+    socialPartners: [],
+    infrastructure: [],
+    responsiblePersons: [],
+    terms: [],
+    educationLevels: [],
+    events: []
+  };
+}
+
+function createManualEntity(
+  document: NormalizedDocument,
+  kind: DocumentEntityPreviewKind,
+  title: string,
+  sourceState: DocumentPreviewSourceState = "manual"
+): DocumentEntityPreview {
+  return {
+    id: `document-entity-preview-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    kind,
+    title,
+    value: "",
+    sourceState,
+    confidence: 0,
+    sourceDocumentId: document.id,
+    sourceDocumentName: document.fileName,
+    sourceFragment: "Не найдено в документе. Заполните вручную при необходимости",
+    matchedSignals: []
+  };
+}
+
+function createManualEvent(document: NormalizedDocument): DocumentEventPreview {
+  return {
+    id: `document-event-preview-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    title: "",
+    sourceState: "manual",
+    confidence: 0,
+    category: "REAL_EVENT",
+    qualityScore: 0,
+    qualityReason: "Добавлено пользователем вручную в preview.",
+    sourceDocumentId: document.id,
+    sourceDocumentName: document.fileName,
+    sourceType: document.sourceType,
+    dateText: "",
+    month: null,
+    educationLevels: [],
+    classesText: "",
+    responsibleText: "",
+    sourceFragment: "Добавлено вручную",
+    matchedSignals: []
+  };
+}
+
+function countStructuredPreviewItems(preview: DocumentStructuredPreview) {
+  return (
+    preview.schoolData.length +
+    preview.educationModules.length +
+    preview.associations.length +
+    preview.socialPartners.length +
+    preview.infrastructure.length +
+    preview.responsiblePersons.length +
+    preview.terms.length +
+    preview.educationLevels.length +
+    preview.events.length
   );
 }
 
-function formatPreviewMonth(month: number | null) {
-  if (!month) {
-    return "не определен";
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", { month: "long" }).format(new Date(2026, month - 1, 1));
+function splitCsv(value: string) {
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
 }
 
-function buildFoundItems(document: NormalizedDocument) {
-  return [
-    `Текст: ${document.metadata.characterCount} символов, ${document.metadata.wordCount} слов.`,
-    `Разделы: ${document.sections.length}.`,
-    `Таблицы: ${document.tables.length}.`,
-    `Списки: ${document.lists.length}.`,
-    document.metadata.hasAppendices ? "Приложения обнаружены." : "Приложения не обнаружены."
-  ];
-}
-
-function buildMissingItems(document: NormalizedDocument) {
-  const items = [];
-
-  if (document.validationStatus === "requires_ocr") {
-    items.push("Текст сканированного PDF не найден. Требуется OCR.");
-  }
-
-  if (document.sections.length === 0) {
-    items.push("Структура разделов не найдена.");
-  }
-
-  if (document.fileType === "xlsx" && document.tables.length === 0) {
-    items.push("Табличные диапазоны XLSX не найдены.");
-  }
-
-  return items.length > 0 ? items : ["Критичных потерь данных не обнаружено."];
-}
-
-function buildManualReviewItems(document: NormalizedDocument) {
-  return [
-    "Проверить корректность заголовков и границ разделов.",
-    "Проверить таблицы и списки перед передачей в КПВР, рабочую программу или нормативный центр.",
-    document.validationStatus === "needs_review" ? "Документ требует ручной проверки качества." : "Документ можно использовать после подтверждения пользователем."
-  ];
+function normalizeText(value: string) {
+  return value.trim().toLowerCase().replace(/ё/g, "е");
 }
 
 function formatDateTime(value: string) {

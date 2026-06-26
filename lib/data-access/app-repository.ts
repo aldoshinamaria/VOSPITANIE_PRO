@@ -4,6 +4,7 @@ import { migrateEventExecutions } from "@/lib/domain/event-execution";
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
 import { createUnknownDocumentClassification } from "@/lib/domain/document-processing/classifier";
 import { migrateDocumentEventPreview } from "@/lib/domain/document-processing/event-preview-extractor";
+import { migrateDocumentStructuredPreview } from "@/lib/domain/document-processing/structured-preview-extractor";
 import { findModuleIdByTitle } from "@/lib/domain/modules";
 import { WORK_STATE_STORAGE_KEY } from "@/lib/data-access/storage-keys";
 import type {
@@ -27,6 +28,7 @@ export interface AppRepository {
 }
 
 const LEGACY_STORAGE_KEY = "vospitanie-pro:app-state";
+const WORK_OPERATIONAL_CLEANUP_KEY = "vospitanie-pro:work-operational-cleanup-2026-06-18";
 
 export class LocalStorageAppRepository implements AppRepository {
   constructor(
@@ -42,12 +44,22 @@ export class LocalStorageAppRepository implements AppRepository {
     const raw = window.localStorage.getItem(this.storageKey);
 
     if (!raw) {
-      this.saveState(this.fallbackState);
-      return this.fallbackState;
+      const initialState =
+        this.storageKey === WORK_STATE_STORAGE_KEY ? clearWorkOperationalData(this.fallbackState) : this.fallbackState;
+
+      this.saveState(initialState);
+
+      if (this.storageKey === WORK_STATE_STORAGE_KEY) {
+        window.localStorage.setItem(WORK_OPERATIONAL_CLEANUP_KEY, new Date().toISOString());
+      }
+
+      return initialState;
     }
 
     try {
-      return migrateState(JSON.parse(raw) as Partial<AppState>, this.fallbackState);
+      const nextState = migrateState(JSON.parse(raw) as Partial<AppState>, this.fallbackState);
+
+      return nextState;
     } catch {
       this.saveState(this.fallbackState);
       return this.fallbackState;
@@ -78,6 +90,26 @@ export function createWorkAppRepository(fallbackState: AppState): AppRepository 
 
 export function createNamespacedAppRepository(storageKey: string, fallbackState: AppState): AppRepository {
   return new LocalStorageAppRepository(storageKey, fallbackState);
+}
+
+function clearWorkOperationalData(state: AppState): AppState {
+  const clearedState: AppState = {
+    ...state,
+    events: [],
+    kpvr: [],
+    processedDocuments: [],
+    documentProcessingLogs: [],
+    extraActivities: [],
+    importedDocuments: [],
+    extractedEvents: [],
+    eventDirectionRelations: [],
+    eventExecutions: []
+  };
+
+  return {
+    ...clearedState,
+    workProgram: createEmptyWorkProgram(clearedState)
+  };
 }
 
 export function migrateState(state: Partial<AppState>, fallbackState: AppState = mockAppState): AppState {
@@ -135,7 +167,8 @@ function migrateProcessedDocument(document: DocumentProcessingRecord): DocumentP
   return {
     ...document,
     classification: document.classification ?? createUnknownDocumentClassification(document.createdAt),
-    extractedEventPreview: migrateDocumentEventPreview(document.extractedEventPreview)
+    extractedEventPreview: migrateDocumentEventPreview(document.extractedEventPreview),
+    structuredPreview: migrateDocumentStructuredPreview(document.structuredPreview)
   };
 }
 

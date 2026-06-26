@@ -18,6 +18,7 @@ import { InMemoryDocumentProcessingLogger } from "./logger";
 import { DefaultDocumentNormalizer } from "./normalizer";
 import { BrowserDocumentStorageLayer } from "./storage";
 import { RuleBasedDocumentStructureExtractor } from "./structure-extractor";
+import { createRuleBasedDocumentStructuredPreviewExtractor, type DocumentStructuredPreviewExtractor } from "./structured-preview-extractor";
 import { CompositeDocumentTextExtractor, DocxTextExtractor, PdfTextExtractor, XlsxTextExtractor } from "./text-extractors";
 import { QualityDocumentValidator } from "./validator";
 
@@ -30,6 +31,7 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
     private readonly validator: QualityDocumentValidator,
     private readonly classifier: DocumentClassifier,
     private readonly eventPreviewExtractor: DocumentEventPreviewExtractor,
+    private readonly structuredPreviewExtractor: DocumentStructuredPreviewExtractor,
     private readonly preparation: DocumentAnalysisPreparation,
     private readonly logger: DocumentProcessingLogger
   ) {}
@@ -100,7 +102,7 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
         fileName: storedFile.fileName,
         stage: "validated",
         level: classification.documentKind === "unknown" ? "warning" : "info",
-        message: `РўРёРї РґРѕРєСѓРјРµРЅС‚Р°: ${classification.documentKind}, СѓРІРµСЂРµРЅРЅРѕСЃС‚СЊ ${classification.confidence}%.`
+        message: `Тип документа: ${classification.documentKind}, уверенность ${classification.confidence}%.`
       });
 
       const withEventPreview = await this.eventPreviewExtractor.extract(classified);
@@ -109,10 +111,19 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
         fileName: storedFile.fileName,
         stage: "prepared_for_analysis",
         level: "info",
-        message: `Найдено мероприятий для предварительного просмотра: ${withEventPreview.extractedEventPreview?.length ?? 0}.`
+        message: `Найдено мероприятий в preview: ${withEventPreview.extractedEventPreview?.length ?? 0}.`
       });
 
-      const analysisPayload = await this.preparation.prepare(withEventPreview);
+      const withStructuredPreview = this.structuredPreviewExtractor.extract(withEventPreview);
+      this.logger.log({
+        documentId,
+        fileName: storedFile.fileName,
+        stage: "prepared_for_analysis",
+        level: "info",
+        message: "Извлечены preview-данные школы, модулей, объединений, партнеров, сроков и ответственных."
+      });
+
+      const analysisPayload = await this.preparation.prepare(withStructuredPreview);
       this.logger.log({
         documentId,
         fileName: storedFile.fileName,
@@ -122,7 +133,7 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
       });
 
       return {
-        normalizedDocument: withEventPreview,
+        normalizedDocument: withStructuredPreview,
         analysisPayload,
         logs: this.logger.list()
       };
@@ -148,6 +159,7 @@ export function createDocumentProcessingPipeline(mode: AppMode = "work"): Docume
     new QualityDocumentValidator(),
     createRuleBasedDocumentClassifier(),
     createRuleBasedDocumentEventPreviewExtractor(),
+    createRuleBasedDocumentStructuredPreviewExtractor(),
     new DefaultDocumentAnalysisPreparation(),
     new InMemoryDocumentProcessingLogger()
   );

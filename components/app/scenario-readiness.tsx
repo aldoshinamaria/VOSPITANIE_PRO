@@ -47,13 +47,13 @@ export function ScenarioReadiness({ state }: ScenarioReadinessProps) {
       title: "Федеральный план",
       description: `${state.importedDocuments.length} документов загружено`,
       done: state.importedDocuments.length > 0,
-      href: "/import-documents"
+      href: "/document-processing"
     },
     {
       title: "Извлечение и импорт",
       description: `${state.extractedEvents.length} найдено, ${selectedExtracted} импортировано`,
       done: selectedExtracted > 0 || state.events.some((event) => event.sourceDocumentId),
-      href: "/import-documents"
+      href: "/document-processing"
     },
     {
       title: "КПВР",
@@ -103,7 +103,7 @@ export function ScenarioReadiness({ state }: ScenarioReadinessProps) {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link href="/import-documents">
+            <Link href="/document-processing">
               <FileText className="h-4 w-4" />
               Перейти к импорту
             </Link>

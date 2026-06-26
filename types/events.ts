@@ -1,4 +1,5 @@
 import type { EducationLevel, Priority } from "@/types/common";
+import type { DocumentSourceType } from "@/types/document-processing";
 import type { ImportedDocumentType } from "@/types/imported-documents";
 
 export type EventStatus = "planned" | "completed" | "cancelled";
@@ -23,7 +24,13 @@ export interface SchoolEvent {
   systemPartnerId?: string;
   sourceDocumentId?: string;
   sourceDocumentTitle?: string;
+  sourceDocumentName?: string;
   sourceDocumentType?: ImportedDocumentType;
+  sourcePreviewEventId?: string;
+  importBatchId?: string;
+  importedAt?: string;
+  sourceType?: DocumentSourceType;
+  sourceConfidence?: number;
   status: EventStatus;
   participantsCount: number;
   shortReport: string;

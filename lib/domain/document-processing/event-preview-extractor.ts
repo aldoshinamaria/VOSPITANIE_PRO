@@ -56,6 +56,7 @@ export function migrateDocumentEventPreview(preview?: Array<Partial<DocumentEven
   return Array.isArray(preview)
     ? preview.map((event) => ({
         ...event,
+        sourceState: event.sourceState ?? "extracted",
         ...("category" in event && "qualityScore" in event && "qualityReason" in event
           ? {}
           : assessPreviewQuality(event.title ?? "", event.sourceFragment ?? "", event.matchedSignals ?? [], event.confidence ?? 0, event.month ?? null))
@@ -112,7 +113,7 @@ function extractListCandidates(document: NormalizedDocument): EventCandidate[] {
 }
 
 function extractTextCandidates(document: NormalizedDocument): EventCandidate[] {
-  if (!["kpvr", "school_work_program", "federal_calendar_plan", "extra_activity_plan"].includes(document.classification?.documentKind ?? "")) {
+  if (!["kpvr", "upbringing_plan", "school_work_program", "federal_calendar_plan", "extra_activity_plan"].includes(document.classification?.documentKind ?? "")) {
     return [];
   }
 
@@ -155,6 +156,7 @@ function toPreview(candidate: EventCandidate, document: NormalizedDocument, filt
   return {
     id: createId("document-event-preview"),
     title,
+    sourceState: "extracted",
     confidence,
     category: quality.category,
     qualityScore: quality.qualityScore,

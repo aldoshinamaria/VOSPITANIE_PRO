@@ -145,6 +145,12 @@ export default function EventsPage() {
   const [competitionConfirmation, setCompetitionConfirmation] = React.useState<CompetitionConfirmation | null>(null);
   const [savedMessage, setSavedMessage] = React.useState<string | null>(null);
 
+  React.useEffect(() => {
+    console.info("[events] events page diagnostics", {
+      stateEventsCount: state.events.length
+    });
+  }, [state.events.length]);
+
   const activeModules = state.educationModules.filter((educationModule) => educationModule.active);
   const activeDirections = state.activityDirections.filter((direction) => direction.active);
   const directionStatistics = buildDirectionStatistics(state.activityDirections, state.eventDirectionRelations, state.events);

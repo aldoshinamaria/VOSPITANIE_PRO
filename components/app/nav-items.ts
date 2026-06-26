@@ -155,16 +155,9 @@ export const navItems = [
   },
   {
     group: "Служебные инструменты",
-    title: "Импорт документов",
-    href: "/import-documents",
-    icon: FileInput,
-    modes: ["work"]
-  },
-  {
-    group: "Служебные инструменты",
-    title: "Работа с документами",
+    title: "Загрузка и анализ документов",
     href: "/document-processing",
-    icon: FileArchive,
+    icon: FileInput,
     modes: ["work"]
   },
   {
