@@ -139,7 +139,7 @@ export function Sidebar() {
           ))}
         </nav>
         <div className="border-t border-white/10 p-4 text-xs text-slate-400">
-          {effectiveMode === "demo" ? "Демо-данные изолированы от рабочей школы" : "Рабочие данные сохраняются отдельно от демо"}
+          {effectiveMode === "demo" ? "Демо-данные изолированы от рабочей школы" : "Рабочие данные сохраняются в этом браузере"}
         </div>
       </aside>
     </>

@@ -144,7 +144,7 @@ export default function SchoolPassportPage() {
   }
 
   async function resetWithConfirmation() {
-    const confirmed = window.confirm("Сбросить паспорт школы к демонстрационным данным? Несохраненные изменения будут потеряны.");
+    const confirmed = window.confirm("Сбросить паспорт школы к исходному состоянию? Несохраненные изменения будут потеряны.");
 
     if (confirmed) {
       try {

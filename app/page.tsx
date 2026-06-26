@@ -56,7 +56,7 @@ export default function DashboardPage() {
         title={isEmpty ? "Добро пожаловать в Воспитание.PRO" : "Главная панель"}
         description={
           isEmpty
-            ? "Начните со своей школы или загрузите демо-школу, чтобы за несколько минут увидеть КПВР, рабочую программу и проверку соответствия."
+            ? "Начните с заполнения данных школы. После внесения паспорта, мероприятий и документов система поможет сформировать КПВР, рабочую программу и проверки."
             : "Краткая сводка по воспитательной работе школы и быстрый переход к ключевым разделам."
         }
       />
@@ -95,19 +95,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Сценарий демонстрации за 5 минут</CardTitle>
-          <CardDescription>Маршрут показывает ценность продукта без долгих объяснений.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <DemoStep title="1. Готовность к запуску" description="Покажите, какие данные заполнены и что мешает документам." href="/launch-readiness" action="Открыть готовность" />
-          <DemoStep title="2. КПВР" description="Покажите календарный план по НОО, ООО и СОО." href="/kpvr" action="Открыть КПВР" />
-          <DemoStep title="3. Рабочая программа" description="Покажите автоматически собранную структуру программы." href="/work-program" action="Открыть программу" />
-          <DemoStep title="4. Проверка соответствия" description="Покажите проблемы, рекомендации и план исправления." href="/compliance-check" action="Открыть проверку" />
-        </CardContent>
-      </Card>
-
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <Card>
           <CardHeader>
@@ -118,7 +105,7 @@ export default function DashboardPage() {
             <div className="grid gap-3 md:hidden">
               {state.events.length === 0 ? (
                 <div className="rounded-md border bg-slate-50 p-4 text-center text-sm text-muted-foreground">
-                  Мероприятий пока нет. Загрузите демо-школу или добавьте первое мероприятие.
+                  Мероприятий пока нет. Добавьте первое мероприятие или импортируйте данные из школьного документа.
                 </div>
               ) : (
                 state.events.slice(0, 8).map((event) => (
@@ -228,14 +215,9 @@ function FirstLaunchWizard({
           </CardTitle>
           <CardDescription>
             {isEmpty
-              ? "Рабочий режим открыт с чистой школой. Демо-данные находятся только в разделе «Демо»."
-              : "Продолжайте заполнять рабочие данные школы. Демо-режим не влияет на это состояние."}
+              ? "Рабочее пространство открыто с чистой школой. Заполните основные данные, чтобы начать формировать документы."
+              : "Продолжайте заполнять и проверять рабочие данные школы."}
           </CardDescription>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild type="button" variant="outline">
-            <Link href="/demo">Открыть демо отдельно</Link>
-          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -253,20 +235,5 @@ function FirstLaunchWizard({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function DemoStep({ title, description, href, action }: { title: string; description: string; href: string; action: string }) {
-  return (
-    <div className="rounded-md border bg-white p-4">
-      <div className="font-semibold">{title}</div>
-      <p className="mt-2 min-h-12 text-sm text-muted-foreground">{description}</p>
-      <Button asChild variant="outline" className="mt-4 w-full justify-start">
-        <Link href={href}>
-          <ShieldCheck className="h-4 w-4" />
-          {action}
-        </Link>
-      </Button>
-    </div>
   );
 }
