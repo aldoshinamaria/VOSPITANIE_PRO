@@ -172,6 +172,10 @@ function getErrorMessage(error: unknown) {
 }
 
 function resolveMode(pathname: string | null): AppMode {
+  if (typeof window !== "undefined" && isPublicDemoHost(window.location.hostname)) {
+    return "demo";
+  }
+
   if (pathname === "/" || pathname === "") {
     return "work";
   }
@@ -185,4 +189,8 @@ function resolveMode(pathname: string | null): AppMode {
   }
 
   return window.localStorage.getItem(APP_MODE_STORAGE_KEY) === "demo" ? "demo" : "work";
+}
+
+function isPublicDemoHost(hostname: string) {
+  return hostname === "vospitanie-pro.vercel.app";
 }
