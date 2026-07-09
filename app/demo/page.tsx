@@ -174,7 +174,7 @@ const keyScenarios = [
 ];
 
 export default function DemoPage() {
-  const { state, updateState, error } = useAppState();
+  const { state, switchMode, updateState, error } = useAppState();
   const [status, setStatus] = React.useState<DemoStatus>("idle");
   const factory = React.useMemo(() => createDemoSchoolFactory(), []);
   const previewState = React.useMemo(() => factory.createDemoSchool("urban"), [factory]);
@@ -211,6 +211,7 @@ export default function DemoPage() {
     setStatus("loading");
 
     try {
+      await switchMode("demo");
       await updateState(() => factory.createDemoSchool("urban"));
       window.localStorage.setItem(DEMO_LOADED_AT_STORAGE_KEY, new Date().toISOString());
       setStatus("loaded");

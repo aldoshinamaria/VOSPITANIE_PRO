@@ -2,8 +2,8 @@
 
 import { AlertCircle, CheckCircle2, Loader2, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { useAppState } from "@/components/app/app-provider";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function DataStatus() {
@@ -17,9 +17,7 @@ export function DataStatus() {
     <div
       className={cn(
         "mb-5 flex items-start justify-between gap-3 rounded-md border px-4 py-3 text-sm",
-        error
-          ? "border-red-200 bg-red-50 text-red-900"
-          : "border-slate-200 bg-white text-slate-700 shadow-sm"
+        error ? "border-red-200 bg-red-50 text-red-900" : "border-slate-200 bg-white text-slate-700 shadow-sm"
       )}
       role={error ? "alert" : "status"}
     >
@@ -33,10 +31,10 @@ export function DataStatus() {
         )}
         <div>
           <div className="font-medium">
-            {error ? "Ошибка Supabase" : isLoading ? "Загрузка данных из Supabase" : "Сохранение в Supabase"}
+            {error ? "Ошибка сохранения" : isLoading ? "Загрузка данных из браузера" : "Сохранение в браузере"}
           </div>
           <div className={cn("mt-1", error ? "text-red-800" : "text-slate-500")}>
-            {error ?? "Данные синхронизируются с облачной базой. Можно продолжать работу после завершения операции."}
+            {error ?? "Данные сохраняются в хранилище этого браузера. Можно продолжать работу после завершения операции."}
           </div>
         </div>
       </div>

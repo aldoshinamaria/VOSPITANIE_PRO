@@ -47,7 +47,7 @@ const finalLinks = [
 ];
 
 export default function DemoShowcasePage() {
-  const { updateState, isSaving } = useAppState();
+  const { switchMode, updateState, isSaving } = useAppState();
   const [loaded, setLoaded] = React.useState(false);
   const factory = React.useMemo(() => createDemoSchoolFactory(), []);
   const demoState = React.useMemo(() => factory.createDemoSchool("urban"), [factory]);
@@ -64,6 +64,7 @@ export default function DemoShowcasePage() {
   const kpvrLevels = event.educationLevels.map((level) => educationLevelLabels[level]).join(", ");
 
   async function loadDemo() {
+    await switchMode("demo");
     await updateState(() => factory.createDemoSchool("urban"));
     window.localStorage.setItem(DEMO_LOADED_AT_STORAGE_KEY, new Date().toISOString());
     setLoaded(true);

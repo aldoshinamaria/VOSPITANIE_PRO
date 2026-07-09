@@ -2,12 +2,14 @@ import { DEFAULT_MODULE_ID } from "@/lib/domain/modules";
 import { createId } from "@/lib/utils";
 import type { EducationLevel } from "@/types/common";
 import type {
+  ActivityDirection,
   DocumentEventImportBatch,
   DocumentEventImportDryRun,
   DocumentEventImportDryRunItem,
   DocumentEventImportResult,
   DocumentEventPreview,
   DocumentProcessingRecord,
+  EducationModule,
   SchoolEvent
 } from "@/types/domain";
 
@@ -16,12 +18,22 @@ const DEFAULT_ACADEMIC_YEAR_START = 2025;
 const DEFAULT_IMPORTED_BY = "local-user";
 
 export interface DocumentEventPreviewImporter {
-  createDryRun(documents: DocumentProcessingRecord[], existingEvents: SchoolEvent[]): DocumentEventImportDryRun;
+  createDryRun(
+    documents: DocumentProcessingRecord[],
+    existingEvents: SchoolEvent[],
+    context?: DocumentEventPreviewImportContext
+  ): DocumentEventImportDryRun;
   importSelected(
     selectedPreviewEventIds: string[],
     documents: DocumentProcessingRecord[],
-    existingEvents: SchoolEvent[]
+    existingEvents: SchoolEvent[],
+    context?: DocumentEventPreviewImportContext
   ): DocumentEventImportResult;
+}
+
+export interface DocumentEventPreviewImportContext {
+  modules?: EducationModule[];
+  directions?: ActivityDirection[];
 }
 
 export function createDocumentEventPreviewImporter(): DocumentEventPreviewImporter {
@@ -29,7 +41,10 @@ export function createDocumentEventPreviewImporter(): DocumentEventPreviewImport
 }
 
 class RuleBasedDocumentEventPreviewImporter implements DocumentEventPreviewImporter {
-  createDryRun(documents: DocumentProcessingRecord[], existingEvents: SchoolEvent[]): DocumentEventImportDryRun {
+  createDryRun(
+    documents: DocumentProcessingRecord[],
+    existingEvents: SchoolEvent[]
+  ): DocumentEventImportDryRun {
     const items = flattenPreviewEvents(documents).map((previewEvent) => classifyPreviewEvent(previewEvent, existingEvents));
 
     return buildDryRun(items);
@@ -38,7 +53,8 @@ class RuleBasedDocumentEventPreviewImporter implements DocumentEventPreviewImpor
   importSelected(
     selectedPreviewEventIds: string[],
     documents: DocumentProcessingRecord[],
-    existingEvents: SchoolEvent[]
+    existingEvents: SchoolEvent[],
+    context?: DocumentEventPreviewImportContext
   ): DocumentEventImportResult {
     const selectedIds = new Set(selectedPreviewEventIds);
     const dryRunItems = flattenPreviewEvents(documents)
@@ -46,7 +62,7 @@ class RuleBasedDocumentEventPreviewImporter implements DocumentEventPreviewImpor
       .map((previewEvent) => classifyPreviewEvent(previewEvent, existingEvents));
     const importableItems = dryRunItems.filter((item) => item.status === "IMPORTABLE");
     const batch = createImportBatch(importableItems.map((item) => item.previewEvent));
-    const events = importableItems.map((item) => createSchoolEventFromPreview(item.previewEvent, batch));
+    const events = importableItems.map((item) => createSchoolEventFromPreview(item.previewEvent, batch, context));
 
     return {
       batch,
@@ -110,10 +126,15 @@ function classifyPreviewEvent(
   };
 }
 
-function createSchoolEventFromPreview(previewEvent: DocumentEventPreview, batch: DocumentEventImportBatch): SchoolEvent {
+function createSchoolEventFromPreview(
+  previewEvent: DocumentEventPreview,
+  batch: DocumentEventImportBatch,
+  context?: DocumentEventPreviewImportContext
+): SchoolEvent {
   const startDate = buildSafeDate(previewEvent);
   const educationLevels = normalizeEducationLevels(previewEvent.educationLevels);
   const classes = previewEvent.classesText.trim() || getDefaultClasses(educationLevels);
+  const moduleId = inferModuleIdFromPreview(previewEvent, context?.modules);
   const responsible = previewEvent.responsibleText.trim() || "Требуется назначить ответственного";
 
   return {
@@ -128,7 +149,7 @@ function createSchoolEventFromPreview(previewEvent: DocumentEventPreview, batch:
     ]
       .filter(Boolean)
       .join("\n"),
-    moduleId: DEFAULT_MODULE_ID,
+    moduleId,
     direction: "Импорт документов",
     educationLevels,
     classes,
@@ -155,6 +176,51 @@ function createSchoolEventFromPreview(previewEvent: DocumentEventPreview, batch:
     shortReport: "Импортировано из предварительного распознавания документа. Требуется ручная проверка карточки мероприятия.",
     priority: "medium"
   };
+}
+
+function inferModuleIdFromPreview(previewEvent: DocumentEventPreview, modules: EducationModule[] = []) {
+  const text = normalizeTextForMatching(buildPreviewSearchText(previewEvent));
+  const moduleRules: Array<{ keywords: string[]; moduleHints: string[] }> = [
+    { keywords: ["классный час", "классное руководство"], moduleHints: ["класс"] },
+    { keywords: ["внеуроч"], moduleHints: ["внеуроч"] },
+    { keywords: ["родител", "семья", "семьи"], moduleHints: ["родител"] },
+    { keywords: ["профориент", "професс", "профпроб"], moduleHints: ["профориент"] },
+    { keywords: ["пдд", "ддтт", "безопасн", "профилактик", "инструктаж", "антитеррор"], moduleHints: ["профилакти", "безопас"] },
+    { keywords: ["самоуправ", "совет обуч", "выборы"], moduleHints: ["самоуправ"] },
+    { keywords: ["музей", "экскурс", "экспозици"], moduleHints: ["музей"] },
+    { keywords: ["медиа", "газет", "сайт", "пресс"], moduleHints: ["медиа"] },
+    { keywords: ["волонтер", "доброволь", "орлята", "движение первых", "юид", "юнарм"], moduleHints: ["объедин", "детск"] },
+    { keywords: ["труд", "субботник", "эколог"], moduleHints: ["труд", "эколог"] },
+    { keywords: ["урок", "разговоры о важном"], moduleHints: ["уроч"] }
+  ];
+
+  for (const rule of moduleRules) {
+    if (!rule.keywords.some((keyword) => text.includes(keyword))) {
+      continue;
+    }
+
+    const matchedModule = modules.find((moduleItem) => {
+      const title = normalizeTextForMatching(moduleItem.title);
+
+      return rule.moduleHints.some((hint) => title.includes(hint));
+    });
+
+    if (matchedModule) {
+      return matchedModule.id;
+    }
+  }
+
+  return modules.find((moduleItem) => moduleItem.id === DEFAULT_MODULE_ID)?.id ?? modules[0]?.id ?? DEFAULT_MODULE_ID;
+}
+
+function buildPreviewSearchText(previewEvent: DocumentEventPreview) {
+  return [
+    previewEvent.title,
+    previewEvent.sourceFragment,
+    previewEvent.sourceDocumentName,
+    previewEvent.responsibleText,
+    previewEvent.matchedSignals.join(" ")
+  ].join(" ");
 }
 
 function createImportBatch(previewEvents: DocumentEventPreview[]): DocumentEventImportBatch {
@@ -218,6 +284,10 @@ function normalizeDuplicateText(value: string) {
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .replace(/\s+/g, " ");
+}
+
+function normalizeTextForMatching(value: string) {
+  return value.toLowerCase().replace(/ё/g, "е").replace(/С‘/g, "Рµ").trim();
 }
 
 function normalizeEducationLevels(levels: string[]): EducationLevel[] {

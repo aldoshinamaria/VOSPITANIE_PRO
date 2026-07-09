@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
@@ -168,7 +168,7 @@ function getErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Не удалось выполнить операцию с Supabase.";
+  return "Не удалось выполнить операцию с хранилищем данных.";
 }
 
 function resolveMode(pathname: string | null): AppMode {

@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ClipboardList, GraduationCap, School } from "lucide-react";
+import { CheckCircle2, ClipboardList, FileSearch, GraduationCap, School, Wand2 } from "lucide-react";
 
 import { useAppState } from "@/components/app/app-provider";
 import { MetricCard } from "@/components/app/metric-card";
@@ -10,9 +11,11 @@ import { ScenarioReadiness } from "@/components/app/scenario-readiness";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { createEventDirectionRelations, inferDirectionIdsFromText } from "@/lib/domain/activity-directions";
+import { createDocumentEventPreviewImporter } from "@/lib/domain/document-processing/event-preview-importer";
 import { buildKpvrDocument, formatKpvrPeriod } from "@/lib/domain/kpvr";
 import { cn } from "@/lib/utils";
-import type { EducationLevel } from "@/types/domain";
+import type { DocumentEventImportResult, EducationLevel } from "@/types/domain";
 
 const kpvrTabs: Array<{
   level: EducationLevel;
@@ -24,8 +27,11 @@ const kpvrTabs: Array<{
 ];
 
 export default function KpvrPage() {
-  const { state } = useAppState();
+  const { state, updateState, isSaving } = useAppState();
   const [activeLevel, setActiveLevel] = useState<EducationLevel>("noo");
+  const [selectedPreviewEventIds, setSelectedPreviewEventIds] = useState<string[]>([]);
+  const [assemblyReport, setAssemblyReport] = useState<DocumentEventImportResult | null>(null);
+  const eventPreviewImporter = useMemo(() => createDocumentEventPreviewImporter(), []);
 
   const documents = useMemo(
     () => ({
@@ -37,6 +43,68 @@ export default function KpvrPage() {
   );
 
   const activeDocument = documents[activeLevel];
+  const confirmedDocuments = useMemo(
+    () => state.processedDocuments.filter((document) => document.confirmed && (document.extractedEventPreview?.length ?? 0) > 0),
+    [state.processedDocuments]
+  );
+  const assemblyDryRun = useMemo(
+    () => eventPreviewImporter.createDryRun(confirmedDocuments, state.events),
+    [confirmedDocuments, eventPreviewImporter, state.events]
+  );
+  const importableItems = assemblyDryRun.items.filter((item) => item.status === "IMPORTABLE");
+  const totalPreviewEvents = confirmedDocuments.reduce((total, document) => total + (document.extractedEventPreview?.length ?? 0), 0);
+
+  function selectAllImportable() {
+    setSelectedPreviewEventIds(importableItems.map((item) => item.previewEvent.id));
+  }
+
+  function togglePreviewEvent(id: string) {
+    setSelectedPreviewEventIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  async function applySelectedPreviewEvents() {
+    if (selectedPreviewEventIds.length === 0) {
+      return;
+    }
+
+    let nextReport: DocumentEventImportResult | null = null;
+
+    await updateState((current) => {
+      const currentConfirmedDocuments = current.processedDocuments.filter(
+        (document) => document.confirmed && (document.extractedEventPreview?.length ?? 0) > 0
+      );
+      const result = eventPreviewImporter.importSelected(selectedPreviewEventIds, currentConfirmedDocuments, current.events, {
+        modules: current.educationModules,
+        directions: current.activityDirections
+      });
+      const eventDirectionRelations = result.events.flatMap((event) => {
+        const inferredDirectionIds = inferDirectionIdsFromText(
+          `${event.direction} ${event.title} ${event.description}`,
+          current.activityDirections
+        );
+
+        return createEventDirectionRelations(
+          event.id,
+          (inferredDirectionIds.length > 0 ? inferredDirectionIds : [current.activityDirections[0]?.id ?? ""]).filter(Boolean)
+        );
+      });
+
+      nextReport = result;
+
+      if (result.events.length === 0) {
+        return current;
+      }
+
+      return {
+        ...current,
+        events: [...result.events, ...current.events],
+        eventDirectionRelations: [...eventDirectionRelations, ...current.eventDirectionRelations]
+      };
+    });
+
+    setAssemblyReport(nextReport);
+    setSelectedPreviewEventIds([]);
+  }
 
   return (
     <>
@@ -54,6 +122,116 @@ export default function KpvrPage() {
       <div className="mt-6">
         <ScenarioReadiness state={state} />
       </div>
+
+      <Card className="mt-6 border-sky-200 bg-sky-50/70">
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Wand2 className="h-5 w-5 text-sky-700" />
+                Мастер сборки единого КТПВР
+              </CardTitle>
+              <CardDescription className="mt-2 max-w-3xl">
+                Использует подтвержденные результаты анализа документов. Мероприятия добавляются в рабочий реестр только после dry-run,
+                выбора пользователем и нажатия кнопки применения.
+              </CardDescription>
+            </div>
+            <Button asChild variant="outline">
+              <Link href="/document-processing">
+                <FileSearch className="h-4 w-4" />
+                Загрузка и анализ документов
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-md border bg-white p-3">
+              <div className="text-xs text-slate-500">Подтверждено документов</div>
+              <div className="mt-1 text-2xl font-semibold">{confirmedDocuments.length}</div>
+            </div>
+            <div className="rounded-md border bg-white p-3">
+              <div className="text-xs text-slate-500">Найдено записей</div>
+              <div className="mt-1 text-2xl font-semibold">{totalPreviewEvents}</div>
+            </div>
+            <div className="rounded-md border bg-white p-3">
+              <div className="text-xs text-slate-500">Можно добавить</div>
+              <div className="mt-1 text-2xl font-semibold text-emerald-700">{assemblyDryRun.importableCount}</div>
+            </div>
+            <div className="rounded-md border bg-white p-3">
+              <div className="text-xs text-slate-500">Дубли / неполные / шум</div>
+              <div className="mt-1 text-2xl font-semibold text-amber-700">
+                {assemblyDryRun.duplicateCount + assemblyDryRun.incompleteCount + assemblyDryRun.skippedCount}
+              </div>
+            </div>
+          </div>
+
+          {confirmedDocuments.length === 0 ? (
+            <div className="rounded-md border border-dashed bg-white p-4 text-sm text-slate-600">
+              Сначала загрузите документы на странице анализа, проверьте preview и нажмите «Подтвердить результат анализа». После этого
+              здесь появится список мероприятий для сборки единого КТПВР.
+            </div>
+          ) : importableItems.length === 0 ? (
+            <div className="rounded-md border bg-white p-4 text-sm text-slate-600">
+              В подтвержденных документах пока нет новых REAL_EVENT с качеством 70% и выше. Дубли и сомнительные записи не добавляются
+              автоматически.
+            </div>
+          ) : (
+            <div className="rounded-md border bg-white">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b p-3">
+                <div className="text-sm font-medium">
+                  Выбрано: {selectedPreviewEventIds.length} из {importableItems.length}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" onClick={selectAllImportable}>
+                    Выбрать все подходящие
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setSelectedPreviewEventIds([])}>
+                    Снять выбор
+                  </Button>
+                  <Button type="button" onClick={applySelectedPreviewEvents} disabled={selectedPreviewEventIds.length === 0 || isSaving}>
+                    <CheckCircle2 className="h-4 w-4" />
+                    Добавить выбранные в реестр
+                  </Button>
+                </div>
+              </div>
+              <div className="divide-y">
+                {importableItems.slice(0, 12).map((item) => (
+                  <label key={item.previewEvent.id} className="flex cursor-pointer gap-3 p-3 text-sm hover:bg-slate-50">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4"
+                      checked={selectedPreviewEventIds.includes(item.previewEvent.id)}
+                      onChange={() => togglePreviewEvent(item.previewEvent.id)}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium text-slate-950">{item.previewEvent.title}</span>
+                      <span className="mt-1 block text-xs text-slate-500">
+                        {item.previewEvent.sourceDocumentName} · качество {item.previewEvent.qualityScore}% · уровень{" "}
+                        {item.previewEvent.educationLevels.join(", ") || "не указан"} · месяц {item.previewEvent.month ?? "не указан"}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {importableItems.length > 12 ? (
+                <div className="border-t p-3 text-xs text-slate-500">Показаны первые 12 записей. Кнопка «Выбрать все» применяет весь список.</div>
+              ) : null}
+            </div>
+          )}
+
+          {assemblyReport ? (
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+              Добавлено мероприятий: {assemblyReport.importedCount}. Пропущено:{" "}
+              {assemblyReport.duplicateCount + assemblyReport.incompleteCount + assemblyReport.skippedCount}. Теперь они участвуют в КПВР и
+              планах деятельности через общий реестр мероприятий.{" "}
+              <Link href="/events" className="font-semibold underline">
+                Открыть мероприятия
+              </Link>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <Card className="mt-6">
         <CardHeader>

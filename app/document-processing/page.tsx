@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createUnknownDocumentClassification } from "@/lib/domain/document-processing/classifier";
 import { createDocumentEventPreviewImporter } from "@/lib/domain/document-processing/event-preview-importer";
 import { createDocumentProcessingPipeline } from "@/lib/domain/document-processing/pipeline";
+import { createEventDirectionRelations, inferDirectionIdsFromText } from "@/lib/domain/activity-directions";
 import type {
   DocumentClassification,
   DocumentEntityPreview,
@@ -219,7 +220,21 @@ export default function DocumentProcessingPage() {
       }
 
       const previewCount = document.extractedEventPreview?.length ?? 0;
-      const result = eventPreviewImporter.importSelected(selectedPreviewEventIds, [document], current.events);
+      const result = eventPreviewImporter.importSelected(selectedPreviewEventIds, [document], current.events, {
+        modules: current.educationModules,
+        directions: current.activityDirections
+      });
+      const eventDirectionRelations = result.events.flatMap((event) => {
+        const inferredDirectionIds = inferDirectionIdsFromText(
+          `${event.direction} ${event.title} ${event.description}`,
+          current.activityDirections
+        );
+
+        return createEventDirectionRelations(
+          event.id,
+          (inferredDirectionIds.length > 0 ? inferredDirectionIds : [current.activityDirections[0]?.id ?? ""]).filter(Boolean)
+        );
+      });
       nextReport = result;
       nextDryRun = eventPreviewImporter.createDryRun([document], [...result.events, ...current.events]);
 
@@ -237,7 +252,8 @@ export default function DocumentProcessingPage() {
 
       return {
         ...current,
-        events: [...result.events, ...current.events]
+        events: [...result.events, ...current.events],
+        eventDirectionRelations: [...eventDirectionRelations, ...current.eventDirectionRelations]
       };
     });
 
@@ -272,6 +288,18 @@ export default function DocumentProcessingPage() {
 
       {error ? <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
       {message ? <div className="mt-5 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</div> : null}
+
+      <Card className="mt-6 border-sky-200 bg-sky-50">
+        <CardContent className="flex flex-col gap-3 p-4 text-sm text-slate-700 md:flex-row md:items-center md:justify-between">
+          <div>
+            Этот экран показывает анализ, классификацию и редактируемый preview. Если нужен старый поток извлечения мероприятий с импортом
+            в реестр, откройте отдельный раздел импорта.
+          </div>
+          <Button asChild variant="outline">
+            <Link href="/import-documents">Открыть импорт мероприятий</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card className="mt-6">
         <CardHeader>

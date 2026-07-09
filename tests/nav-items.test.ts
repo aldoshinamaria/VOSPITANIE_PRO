@@ -2,26 +2,28 @@ import assert from "node:assert/strict";
 
 import { getNavItemsForMode } from "@/components/app/nav-items";
 
-run("work mode hides demo navigation", () => {
-  const titles = getNavItemsForMode("work").map((item) => item.title);
+run("work mode hides demo navigation and shows work onboarding", () => {
+  const items = getNavItemsForMode("work");
+  const hrefs = items.map((item) => item.href);
 
-  assert.ok(!titles.includes("Демо"));
-  assert.ok(!titles.includes("Демонстрационный маршрут"));
-  assert.ok(!titles.includes("Подготовка к запуску"));
-  assert.ok(titles.includes("Паспорт школы"));
-  assert.ok(titles.includes("Рабочая программа"));
+  assert.ok(!hrefs.includes("/demo"));
+  assert.ok(!hrefs.includes("/demo-showcase"));
+  assert.ok(hrefs.includes("/"));
+  assert.ok(hrefs.includes("/launch-readiness"));
+  assert.ok(hrefs.includes("/school-passport"));
+  assert.ok(hrefs.includes("/import-documents"));
+  assert.ok(hrefs.includes("/document-processing"));
+  assert.ok(hrefs.includes("/work-program"));
 });
 
-run("demo mode shows only demo navigation", () => {
+run("demo mode keeps demo entry points isolated", () => {
   const items = getNavItemsForMode("demo");
-  const titles = items.map((item) => item.title);
+  const hrefs = items.map((item) => item.href);
 
-  assert.deepEqual(titles, ["Демо", "Демонстрационный маршрут"]);
-  assert.ok(items.every((item) => item.href.startsWith("/demo")));
+  assert.deepEqual(hrefs, ["/demo", "/demo-showcase"]);
 });
 
 function run(name: string, test: () => void) {
   test();
   console.log(`ok - ${name}`);
 }
-

@@ -137,7 +137,7 @@ export default function SchoolPassportPage() {
           updatedAt: new Date().toISOString().slice(0, 10)
         }
       }));
-      setSavedAt("Данные сохранены в Supabase");
+      setSavedAt("Данные сохранены в браузере");
     } catch {
       setSavedAt(null);
     }
@@ -330,6 +330,13 @@ export default function SchoolPassportPage() {
                 </div>
               </div>
             ))}
+
+            <div className="flex justify-end border-t pt-4">
+              <Button type="button" variant="outline" onClick={addPartner}>
+                <Plus className="h-4 w-4" />
+                {"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043f\u0430\u0440\u0442\u043d\u0435\u0440\u0430"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

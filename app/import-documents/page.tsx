@@ -324,6 +324,18 @@ export default function ImportDocumentsPage() {
         description="Загрузка DOCX, PDF и XLSX, поиск мероприятий и импорт проверенных событий в основной реестр."
       />
 
+      <Card className="mb-6 border-sky-200 bg-sky-50">
+        <CardContent className="flex flex-col gap-3 p-4 text-sm text-slate-700 md:flex-row md:items-center md:justify-between">
+          <div>
+            Этот раздел предназначен для сценария «файл → найденные мероприятия → импорт в реестр».
+            Для общего анализа структуры документа используйте основной документный экран.
+          </div>
+          <Button asChild variant="outline">
+            <Link href="/document-processing">Открыть общий анализ документов</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard title="Файлов" value={documents.length} icon={FileText} />
         <MetricCard title="Общий размер" value={formatFileSize(totalSize)} icon={FileUp} />
