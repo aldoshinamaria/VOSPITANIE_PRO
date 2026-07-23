@@ -1007,6 +1007,12 @@ export default function EventsPage() {
                         </TableCell>
                         <TableCell className="min-w-64">
                           <div className="font-medium">{event.title}</div>
+                          <Link
+                            className="mt-1 inline-block text-xs text-sky-700 underline-offset-2 hover:underline"
+                            href={`/events/${encodeURIComponent(event.id)}`}
+                          >
+                            Открыть карточку
+                          </Link>
                           <div className="mt-1 text-xs text-muted-foreground">{event.description}</div>
                           <div className="mt-2 text-xs">Классы: {event.classes}</div>
                           {event.venue ? <div className="text-xs text-muted-foreground">Место: {event.venue}</div> : null}

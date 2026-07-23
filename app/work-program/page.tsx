@@ -13,7 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { createWorkProgramAssembler } from "@/lib/domain/work-program/work-program-assembler";
-import { buildWorkProgramDocxBlob, buildWorkProgramPrintHtml, getWorkProgramDocxFileName } from "@/lib/domain/work-program/work-program-export";
+import { buildWorkProgramDocxBlob, getWorkProgramDocxFileName } from "@/lib/domain/work-program/work-program-export";
+import { buildWorkProgramPdfBlob, getWorkProgramPdfFileName } from "@/lib/domain/work-program/work-program-pdf";
 import { createId } from "@/lib/utils";
 import type {
   AppState,
@@ -51,6 +52,14 @@ export default function WorkProgramPage() {
   React.useEffect(() => {
     setSelectedVersionId(selectedSectionVersions[0]?.id ?? "");
   }, [activeSectionId, selectedSectionVersions]);
+
+  React.useEffect(() => {
+    const sectionId = window.location.hash.replace("#section-", "");
+
+    if (sectionId && program.sections.some((section) => section.id === sectionId)) {
+      setActiveSectionId(sectionId as WorkProgramSectionId);
+    }
+  }, [program.sections]);
 
   async function persistProgram(nextProgram: WorkProgram) {
     await updateState((current) => ({
@@ -200,18 +209,9 @@ export default function WorkProgramPage() {
     downloadBlob(blob, getWorkProgramDocxFileName(program));
   }
 
-  function exportPdf() {
-    const popup = window.open("", "_blank");
-
-    if (!popup) {
-      setMessage("Браузер заблокировал окно печати. Разрешите всплывающие окна и повторите экспорт PDF.");
-      return;
-    }
-
-    popup.document.write(buildWorkProgramPrintHtml(program));
-    popup.document.close();
-    popup.focus();
-    popup.print();
+  async function exportPdf() {
+    const blob = await buildWorkProgramPdfBlob(program);
+    downloadBlob(blob, getWorkProgramPdfFileName(program));
   }
 
   return (
@@ -283,7 +283,7 @@ export default function WorkProgramPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id={activeSection ? `section-${activeSection.id}` : undefined} className="scroll-mt-6">
           <CardHeader>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -300,7 +300,7 @@ export default function WorkProgramPage() {
               <EmptyState icon={FileText} title="Раздел не выбран" description="Выберите раздел программы слева." />
             ) : (
               activeSection.subsections.map((subsection) => (
-                <div key={subsection.id} className="rounded-md border bg-white p-4">
+                <div id={`subsection-${subsection.id}`} key={subsection.id} className="scroll-mt-6 rounded-md border bg-white p-4">
                   <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="font-medium">{subsection.title}</div>

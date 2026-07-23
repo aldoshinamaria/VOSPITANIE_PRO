@@ -128,6 +128,11 @@ run("empty program creates critical issues and does not throw", () => {
   assert.equal(getComplianceCheckStatus(check), "needs_revision");
   assert.ok(check.issues.some((issue) => issue.severity === "critical"));
   assert.ok(check.sectionCoverage.every((section) => section.status === "failed"));
+  assert.ok(
+    check.issues
+      .filter((issue) => issue.targetModule === "work-program" && issue.targetSectionId)
+      .every((issue) => issue.targetUrl.includes(`#section-${issue.targetSectionId}`))
+  );
 });
 
 run("partially filled program is marked for review", () => {

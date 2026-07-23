@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "tsc -p tsconfig.test.json && node -r ./tests/register-paths.cjs ./.test-build/tests/import-history.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/work-program-compliance-checker.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/activity-report-builder.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/event-execution.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/inspection-center.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/app-mode-storage.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/nav-items.test.js"
+    "smoke": "node scripts/smoke-production.mjs",
+    "test": "tsc -p tsconfig.test.json && node -r ./tests/register-paths.cjs ./.test-build/tests/work-program-pdf.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/supabase-security.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/import-history.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/work-program-compliance-checker.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/activity-report-builder.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/event-execution.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/inspection-center.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/app-mode-storage.test.js && node -r ./tests/register-paths.cjs ./.test-build/tests/nav-items.test.js"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",
@@ -18,15 +19,17 @@
     "fflate": "^0.8.3",
     "lucide-react": "^0.468.0",
     "mammoth": "^1.12.0",
-    "next": "^15.1.0",
+    "next": "^15.5.21",
     "pdfjs-dist": "^6.0.227",
+    "pdfmake": "^0.2.20",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "read-excel-file": "^9.0.10",
     "tailwind-merge": "^2.6.0"
   },
   "overrides": {
-    "postcss": "^8.5.10"
+    "postcss": "^8.5.10",
+    "sharp": "0.35.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

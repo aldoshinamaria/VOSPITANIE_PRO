@@ -155,7 +155,7 @@ export default function ImportHistoryPage() {
                           {eventState === "modified" ? "Изменено после импорта" : "Без изменений"}
                         </Badge>
                         <Button asChild size="sm" variant="ghost">
-                          <Link href={`/events#event-${encodeURIComponent(event.id)}`}>Открыть карточку</Link>
+                          <Link href={`/events/${encodeURIComponent(event.id)}`}>Открыть карточку</Link>
                         </Button>
                       </div>
                     </div>

@@ -476,6 +476,10 @@ function addIssue(
     id: createId("compliance-issue")
   };
 
+  if (nextIssue.targetModule === "work-program" && nextIssue.targetSectionId) {
+    nextIssue.targetUrl = `/work-program#section-${nextIssue.targetSectionId}`;
+  }
+
   issues.push(nextIssue);
   recommendations.push({
     id: createId("compliance-recommendation"),
