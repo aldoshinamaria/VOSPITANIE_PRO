@@ -24,6 +24,8 @@ assert.ok(!repositorySource.includes('from "@/data/mock-data"'));
 assert.ok(repositorySource.includes("`school-${authData.user.id}`"));
 assert.ok(repositorySource.includes("owner_id: authData.user.id"));
 assert.ok(repositorySource.includes(".insert({"));
+assert.ok(repositorySource.includes("const { error: insertError }"));
+assert.ok(repositorySource.includes("const { data: seeded, error: selectError }"));
 assert.ok(providerSource.includes("if (!data.session)"));
 assert.ok(providerSource.includes("return initialState"));
 assert.ok(loginSource.includes("Превышен лимит писем подтверждения Supabase"));

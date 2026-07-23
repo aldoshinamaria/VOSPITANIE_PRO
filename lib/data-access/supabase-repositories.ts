@@ -717,17 +717,23 @@ class SupabaseAppRepository {
         id: `school-${authData.user.id}`
       }
     };
-    const { data: seeded, error: seededError } = await this.client
+    const { error: insertError } = await this.client.from("schools").insert({
+      ...mapSchoolToInsert(initialState.schoolPassport),
+      owner_id: authData.user.id
+    });
+
+    if (insertError) {
+      throw toRepositoryError("Не удалось создать стартовые данные Supabase", insertError);
+    }
+
+    const { data: seeded, error: selectError } = await this.client
       .from("schools")
-      .insert({
-        ...mapSchoolToInsert(initialState.schoolPassport),
-        owner_id: authData.user.id
-      })
-      .select()
+      .select("*")
+      .eq("id", initialState.schoolPassport.id)
       .single();
 
-    if (seededError) {
-      throw toRepositoryError("Не удалось создать стартовые данные Supabase", seededError);
+    if (selectError) {
+      throw toRepositoryError("Не удалось прочитать стартовые данные Supabase", selectError);
     }
 
     await this.ensureReferenceData(seeded.id);
