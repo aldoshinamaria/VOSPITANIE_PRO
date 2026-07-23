@@ -26,6 +26,9 @@ run("schema defines owner and membership authorization", () => {
   assert.ok(schema.includes("create table if not exists public.school_memberships"));
   assert.ok(schema.includes("private.can_access_school"));
   assert.ok(schema.includes("private.can_manage_school"));
+  assert.ok(schema.includes("private.can_administer_school"));
+  assert.ok(schema.includes("memberships_insert"));
+  assert.ok(schema.includes("with check (private.can_administer_school(school_id))"));
 });
 
 run("every tenant table is covered by RLS setup", () => {
@@ -43,6 +46,7 @@ run("anonymous access is revoked and authenticated grants are explicit", () => {
   assert.ok(schema.includes("revoke all on all tables in schema public from anon"));
   assert.ok(schema.includes("to authenticated"));
   assert.ok(schema.includes("grant execute on function private.can_access_school"));
+  assert.ok(schema.includes("revoke all on function private.can_administer_school(text) from public"));
   assert.ok(!schema.includes("service_role"));
   assert.ok(!schema.includes("auth.role()"));
 });

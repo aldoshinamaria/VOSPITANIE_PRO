@@ -239,6 +239,11 @@ create index if not exists extracted_events_source_document_id_idx on public.ext
 create index if not exists extracurricular_school_id_status_idx on public.extracurricular_programs(school_id, status);
 create index if not exists extracurricular_education_levels_idx on public.extracurricular_programs using gin(education_levels);
 create index if not exists staff_school_id_idx on public.staff(school_id);
+create index if not exists schools_owner_id_idx on public.schools(owner_id);
+create index if not exists school_memberships_user_id_idx on public.school_memberships(user_id);
+create index if not exists normative_documents_school_id_idx on public.normative_documents(school_id);
+create index if not exists document_processing_state_school_id_idx on public.document_processing_state(school_id);
+create index if not exists work_programs_school_id_idx on public.work_programs(school_id);
 
 create schema if not exists private;
 
@@ -286,11 +291,36 @@ as $$
     );
 $$;
 
+create or replace function private.can_administer_school(target_school_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select
+    (select auth.uid()) is not null
+    and (
+      exists (
+        select 1 from public.schools
+        where id = target_school_id and owner_id = (select auth.uid())
+      )
+      or exists (
+        select 1 from public.school_memberships
+        where school_id = target_school_id
+          and user_id = (select auth.uid())
+          and role in ('owner', 'admin')
+      )
+    );
+$$;
+
 revoke all on function private.can_access_school(text) from public;
 revoke all on function private.can_manage_school(text) from public;
+revoke all on function private.can_administer_school(text) from public;
 grant usage on schema private to authenticated;
 grant execute on function private.can_access_school(text) to authenticated;
 grant execute on function private.can_manage_school(text) to authenticated;
+grant execute on function private.can_administer_school(text) to authenticated;
 
 alter table public.schools enable row level security;
 alter table public.school_memberships enable row level security;
@@ -314,14 +344,14 @@ create policy memberships_select on public.school_memberships for select to auth
 using (private.can_access_school(school_id));
 drop policy if exists memberships_insert on public.school_memberships;
 create policy memberships_insert on public.school_memberships for insert to authenticated
-with check (private.can_manage_school(school_id));
+with check (private.can_administer_school(school_id));
 drop policy if exists memberships_update on public.school_memberships;
 create policy memberships_update on public.school_memberships for update to authenticated
-using (private.can_manage_school(school_id))
-with check (private.can_manage_school(school_id));
+using (private.can_administer_school(school_id))
+with check (private.can_administer_school(school_id));
 drop policy if exists memberships_delete on public.school_memberships;
 create policy memberships_delete on public.school_memberships for delete to authenticated
-using (private.can_manage_school(school_id));
+using (private.can_administer_school(school_id));
 
 do $$
 declare

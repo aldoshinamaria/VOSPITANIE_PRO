@@ -50,7 +50,8 @@ export function createEmptySchoolState(): AppState {
     normativeDocuments: [],
     processedDocuments: [],
     documentProcessingLogs: [],
-    complianceCheckHistory: []
+    complianceCheckHistory: [],
+    exportDocuments: []
   };
 
   return {

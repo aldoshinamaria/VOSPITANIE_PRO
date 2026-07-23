@@ -1,4 +1,3 @@
-import { mockAppState } from "@/data/mock-data";
 import { migrateEventDirectionRelations, standardActivityDirections } from "@/lib/domain/activity-directions";
 import { migrateEventExecutions } from "@/lib/domain/event-execution";
 import type {
@@ -31,6 +30,7 @@ import type {
   WorkProgramRow
 } from "@/lib/supabase/client";
 import { createEmptyWorkProgram } from "@/lib/domain/work-program/work-program-assembler";
+import { createEmptySchoolState } from "@/lib/domain/empty-school-state";
 import { createUnknownDocumentClassification } from "@/lib/domain/document-processing/classifier";
 import { migrateDocumentEventPreview } from "@/lib/domain/document-processing/event-preview-extractor";
 import { migrateDocumentStructuredPreview } from "@/lib/domain/document-processing/structured-preview-extractor";
@@ -140,25 +140,26 @@ class SupabaseAppRepository {
 
   async getState(): Promise<AppState> {
     const school = await this.getCurrentSchool();
+    const emptyState = createEmptySchoolState();
 
     const baseState = {
       schoolPassport: await this.getPassport(school.id),
       educationModules: await this.listModules(school.id),
       activityDirections: standardActivityDirections,
-      eventDirectionRelations: mockAppState.eventDirectionRelations,
-      eventExecutions: mockAppState.eventExecutions,
+      eventDirectionRelations: emptyState.eventDirectionRelations,
+      eventExecutions: emptyState.eventExecutions,
       events: await this.listEvents(school.id),
-      kpvr: mockAppState.kpvr,
+      kpvr: emptyState.kpvr,
       extraActivities: await this.listExtraActivities(school.id),
       educationalSystem: await this.getEducationalSystem(school.id),
       importedDocuments: await this.listImportedDocuments(school.id),
       extractedEvents: await this.listExtractedEvents(school.id),
       normativeDocuments: await this.listNormativeDocuments(school.id),
-      processedDocuments: mockAppState.processedDocuments,
-      documentProcessingLogs: mockAppState.documentProcessingLogs,
-      workProgram: mockAppState.workProgram,
-      complianceCheckHistory: mockAppState.complianceCheckHistory,
-      exportDocuments: mockAppState.exportDocuments
+      processedDocuments: emptyState.processedDocuments,
+      documentProcessingLogs: emptyState.documentProcessingLogs,
+      workProgram: emptyState.workProgram,
+      complianceCheckHistory: emptyState.complianceCheckHistory,
+      exportDocuments: emptyState.exportDocuments
     };
 
     const workProgramState = await this.getWorkProgramState(school.id, baseState);
@@ -188,7 +189,8 @@ class SupabaseAppRepository {
   }
 
   async reset(): Promise<AppState> {
-    const schoolId = mockAppState.schoolPassport.id;
+    const currentSchool = await this.getCurrentSchool();
+    const schoolId = currentSchool.id;
     await Promise.all([
       this.client.from("events").delete().eq("school_id", schoolId),
       this.client.from("extracurricular_programs").delete().eq("school_id", schoolId),
@@ -205,7 +207,14 @@ class SupabaseAppRepository {
       this.client.from("staff").delete().eq("school_id", schoolId)
     ]);
 
-    await this.saveState(mockAppState);
+    const emptyState = createEmptySchoolState();
+    await this.saveState({
+      ...emptyState,
+      schoolPassport: {
+        ...emptyState.schoolPassport,
+        id: schoolId
+      }
+    });
     return this.getState();
   }
 
@@ -243,7 +252,7 @@ class SupabaseAppRepository {
 
     await this.replacePartners(passport.id, passport.socialPartners);
     await this.syncStaff(passport.id, {
-      ...mockAppState,
+      ...createEmptySchoolState(),
       schoolPassport: passport
     });
 
@@ -304,7 +313,7 @@ class SupabaseAppRepository {
       throw toRepositoryError("Не удалось загрузить модули воспитания", error);
     }
 
-    return data && data.length > 0 ? data.map(mapModuleRow) : mockAppState.educationModules;
+    return data && data.length > 0 ? data.map(mapModuleRow) : createEmptySchoolState().educationModules;
   }
 
   async replaceModules(schoolId: string, modules: EducationModule[]): Promise<EducationModule[]> {
@@ -406,15 +415,15 @@ class SupabaseAppRepository {
       associations:
         associationsResult.data && associationsResult.data.length > 0
           ? associationsResult.data.map(mapEducationalAssociationRow)
-          : mockAppState.educationalSystem.associations,
+          : createEmptySchoolState().educationalSystem.associations,
       infrastructureObjects:
         infrastructureResult.data && infrastructureResult.data.length > 0
           ? infrastructureResult.data.map(mapSchoolInfrastructureObjectRow)
-          : mockAppState.educationalSystem.infrastructureObjects,
+          : createEmptySchoolState().educationalSystem.infrastructureObjects,
       partners:
         partnersResult.data && partnersResult.data.length > 0
           ? partnersResult.data.map(mapEducationalSystemPartnerRow)
-          : mockAppState.educationalSystem.partners
+          : createEmptySchoolState().educationalSystem.partners
     };
   }
 
@@ -591,8 +600,8 @@ class SupabaseAppRepository {
 
     if (!data) {
       return {
-        processedDocuments: mockAppState.processedDocuments,
-        documentProcessingLogs: mockAppState.documentProcessingLogs
+        processedDocuments: createEmptySchoolState().processedDocuments,
+        documentProcessingLogs: createEmptySchoolState().documentProcessingLogs
       };
     }
 
@@ -650,7 +659,7 @@ class SupabaseAppRepository {
       eventExecutions: migrateEventExecutions(state.events, rawData?.eventExecutions),
       complianceCheckHistory: Array.isArray(rawData?.complianceCheckHistory)
         ? rawData.complianceCheckHistory
-        : mockAppState.complianceCheckHistory
+        : createEmptySchoolState().complianceCheckHistory
     };
   }
 
@@ -691,12 +700,29 @@ class SupabaseAppRepository {
       return data[0];
     }
 
-    await this.saveState(mockAppState);
+    const { data: authData, error: authError } = await this.client.auth.getUser();
+
+    if (authError || !authData.user) {
+      throw toRepositoryError(
+        "Для создания рабочей школы необходимо войти в систему",
+        authError ?? { message: "Пользователь не авторизован." }
+      );
+    }
+
+    const emptyState = createEmptySchoolState();
+    const initialState = {
+      ...emptyState,
+      schoolPassport: {
+        ...emptyState.schoolPassport,
+        id: `school-${authData.user.id}`
+      }
+    };
+    await this.saveState(initialState);
 
     const { data: seeded, error: seededError } = await this.client
       .from("schools")
       .select("*")
-      .eq("id", mockAppState.schoolPassport.id)
+      .eq("id", initialState.schoolPassport.id)
       .single();
 
     if (seededError) {
@@ -709,13 +735,13 @@ class SupabaseAppRepository {
   private async ensureReferenceData(schoolId: string) {
     const [{ count: modulesCount }, { count: exportsCount }] = await Promise.all([
       this.client.from("modules").select("id", { count: "exact", head: true }).eq("school_id", schoolId),
-      Promise.resolve({ count: mockAppState.exportDocuments.length })
+      Promise.resolve({ count: createEmptySchoolState().exportDocuments.length })
     ]);
 
     if (modulesCount === 0) {
       const { error } = await this.client
         .from("modules")
-        .upsert(mockAppState.educationModules.map((module) => mapModuleToInsert(schoolId, module)));
+        .upsert(createEmptySchoolState().educationModules.map((module) => mapModuleToInsert(schoolId, module)));
 
       if (error) {
         throw toRepositoryError("Не удалось создать справочник модулей", error);
@@ -1212,7 +1238,7 @@ function normalizeInfrastructure(value: Record<string, unknown>): SchoolInfrastr
     : [];
 
   return {
-    ...mockAppState.schoolPassport.infrastructure,
+    ...createEmptySchoolState().schoolPassport.infrastructure,
     museum: value.museum === true,
     mediaCenter: value.mediaCenter === true,
     theater: value.theater === true,
