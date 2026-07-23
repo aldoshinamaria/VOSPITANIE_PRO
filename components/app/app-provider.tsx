@@ -4,7 +4,9 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 
 import { createModeAwareDataAccess } from "@/lib/data-access/mode-aware-data-access";
+import { isSupabaseBackendEnabled } from "@/lib/data-access/backend-config";
 import { APP_MODE_STORAGE_KEY } from "@/lib/data-access/storage-keys";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { AppMode } from "@/types/app-mode";
 import type { AppState } from "@/types/domain";
 
@@ -59,7 +61,7 @@ export function AppProvider({ children, initialState }: { children: React.ReactN
     let mounted = true;
 
     setIsLoading(true);
-    Promise.resolve(dataAccess.getState())
+    loadStateForCurrentSession(mode, initialState, dataAccess.getState)
       .then((nextState) => {
         if (mounted) {
           setState(nextState);
@@ -81,7 +83,7 @@ export function AppProvider({ children, initialState }: { children: React.ReactN
     return () => {
       mounted = false;
     };
-  }, [dataAccess]);
+  }, [dataAccess, initialState, mode, pathname]);
 
   const switchMode = React.useCallback(
     async (nextMode: AppMode) => {
@@ -151,6 +153,27 @@ export function AppProvider({ children, initialState }: { children: React.ReactN
       {children}
     </AppContext.Provider>
   );
+}
+
+async function loadStateForCurrentSession(
+  mode: AppMode,
+  initialState: AppState,
+  getState: () => AppState | Promise<AppState>
+) {
+  if (mode === "work" && isSupabaseBackendEnabled()) {
+    const client = createSupabaseBrowserClient();
+    const { data, error } = await client.auth.getSession();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data.session) {
+      return initialState;
+    }
+  }
+
+  return Promise.resolve(getState());
 }
 
 export function useAppState() {

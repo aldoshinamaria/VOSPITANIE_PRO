@@ -55,7 +55,7 @@ export default function LoginPage() {
       router.push("/launch-readiness");
       router.refresh();
     } catch (authError) {
-      setError(authError instanceof Error ? authError.message : "Не удалось выполнить вход.");
+      setError(getAuthErrorMessage(authError));
     } finally {
       setIsSubmitting(false);
     }
@@ -126,4 +126,22 @@ export default function LoginPage() {
       </Card>
     </>
   );
+}
+
+function getAuthErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message.includes("email rate limit exceeded")) {
+    return "Превышен лимит писем подтверждения Supabase. Подождите и повторите регистрацию позже.";
+  }
+
+  if (message.includes("Invalid login credentials")) {
+    return "Неверная электронная почта или пароль.";
+  }
+
+  if (message.includes("Email not confirmed")) {
+    return "Сначала подтвердите электронную почту по ссылке из письма.";
+  }
+
+  return message || "Не удалось выполнить вход.";
 }
