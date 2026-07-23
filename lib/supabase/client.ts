@@ -313,6 +313,8 @@ export interface StaffRow {
 
 export type StaffInsert = Omit<StaffRow, "created_at" | "updated_at">;
 
+let browserClient: SupabaseBrowserClient | null = null;
+
 export function createSupabaseBrowserClient(): SupabaseBrowserClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabasePublishableKey =
@@ -324,11 +326,17 @@ export function createSupabaseBrowserClient(): SupabaseBrowserClient {
     );
   }
 
-  return createClient(supabaseUrl, supabasePublishableKey, {
+  if (browserClient) {
+    return browserClient;
+  }
+
+  browserClient = createClient(supabaseUrl, supabasePublishableKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true
     }
   });
+
+  return browserClient;
 }

@@ -13,6 +13,7 @@ const providerSource = fs.readFileSync(
   "utf8"
 );
 const loginSource = fs.readFileSync(path.join(process.cwd(), "app", "login", "page.tsx"), "utf8");
+const clientSource = fs.readFileSync(path.join(process.cwd(), "lib", "supabase", "client.ts"), "utf8");
 const emptyState = createEmptySchoolState();
 
 assert.equal(emptyState.schoolPassport.name, "");
@@ -26,5 +27,7 @@ assert.ok(repositorySource.includes(".insert({"));
 assert.ok(providerSource.includes("if (!data.session)"));
 assert.ok(providerSource.includes("return initialState"));
 assert.ok(loginSource.includes("Превышен лимит писем подтверждения Supabase"));
+assert.ok(clientSource.includes("let browserClient: SupabaseBrowserClient | null = null"));
+assert.ok(clientSource.includes("if (browserClient)"));
 
 console.log("supabase-work-mode.test.ts: ok");
