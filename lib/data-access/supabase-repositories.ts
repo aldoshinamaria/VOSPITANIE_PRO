@@ -717,18 +717,20 @@ class SupabaseAppRepository {
         id: `school-${authData.user.id}`
       }
     };
-    await this.saveState(initialState);
-
     const { data: seeded, error: seededError } = await this.client
       .from("schools")
-      .select("*")
-      .eq("id", initialState.schoolPassport.id)
+      .insert({
+        ...mapSchoolToInsert(initialState.schoolPassport),
+        owner_id: authData.user.id
+      })
+      .select()
       .single();
 
     if (seededError) {
       throw toRepositoryError("Не удалось создать стартовые данные Supabase", seededError);
     }
 
+    await this.ensureReferenceData(seeded.id);
     return seeded;
   }
 

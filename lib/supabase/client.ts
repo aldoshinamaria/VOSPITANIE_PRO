@@ -85,6 +85,7 @@ export interface Database {
 
 export interface SchoolRow {
   id: string;
+  owner_id: string;
   name: string;
   region: string;
   municipality: string;
@@ -98,7 +99,7 @@ export interface SchoolRow {
   updated_at: string;
 }
 
-export type SchoolInsert = SchoolRow;
+export type SchoolInsert = Omit<SchoolRow, "owner_id"> & { owner_id?: string };
 
 export interface PartnerRow {
   id: string;
