@@ -38,7 +38,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { createId } from "@/lib/utils";
 import type { AppState } from "@/types/app-state";
 import type { EducationLevel, Priority } from "@/types/common";
-import type { DocumentProcessingLogEntry, DocumentProcessingRecord } from "@/types/document-processing";
+import type { DocumentProcessingLogEntry, DocumentProcessingRecord, DocumentSourceType } from "@/types/document-processing";
 import type {
   EducationalAssociation,
   EducationalAssociationType,
@@ -893,7 +893,14 @@ function mapEventRow(row: EventRow): SchoolEvent {
     systemPartnerId: row.system_partner_id || "",
     sourceDocumentId: row.source_document_id || "",
     sourceDocumentTitle: row.source_document_title || "",
+    sourceDocumentName: row.source_document_name || "",
     sourceDocumentType: row.source_document_type ? normalizeImportedDocumentType(row.source_document_type) : undefined,
+    sourcePreviewEventId: row.source_preview_event_id || "",
+    importBatchId: row.import_batch_id || "",
+    importedAt: row.imported_at || "",
+    importedContentSignature: row.imported_content_signature || "",
+    sourceType: row.source_type ? normalizeDocumentSourceType(row.source_type) : undefined,
+    sourceConfidence: row.source_confidence,
     status: normalizeEventStatus(row.status),
     participantsCount: row.participants_count,
     shortReport: row.short_report,
@@ -924,6 +931,13 @@ function mapEventToInsert(schoolId: string, event: SchoolEvent): EventInsert {
     source_document_id: event.sourceDocumentId ?? "",
     source_document_title: event.sourceDocumentTitle ?? "",
     source_document_type: event.sourceDocumentType ?? "",
+    source_document_name: event.sourceDocumentName ?? "",
+    source_preview_event_id: event.sourcePreviewEventId ?? "",
+    import_batch_id: event.importBatchId ?? "",
+    imported_at: event.importedAt ?? "",
+    imported_content_signature: event.importedContentSignature ?? "",
+    source_type: event.sourceType ?? "",
+    source_confidence: event.sourceConfidence ?? 0,
     status: event.status,
     participants_count: event.participantsCount,
     short_report: event.shortReport,
@@ -1290,6 +1304,12 @@ function normalizeExtractedEventStatus(value: string): ExtractedEventStatus {
   }
 
   return "found";
+}
+
+function normalizeDocumentSourceType(value: string): DocumentSourceType {
+  return value === "normative" || value === "work-program" || value === "kpvr" || value === "local"
+    ? value
+    : "import";
 }
 
 function normalizeExtraActivityType(value: string): ExtraActivityType {

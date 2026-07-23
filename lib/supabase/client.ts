@@ -146,6 +146,13 @@ export interface EventRow {
   source_document_id: string;
   source_document_title: string;
   source_document_type: string;
+  source_document_name: string;
+  source_preview_event_id: string;
+  import_batch_id: string;
+  imported_at: string;
+  imported_content_signature: string;
+  source_type: string;
+  source_confidence: number;
   status: string;
   participants_count: number;
   short_report: string;

@@ -1,4 +1,5 @@
 import { findModuleIdByTitle } from "@/lib/domain/modules";
+import { createImportedContentSignature } from "@/lib/domain/import-history";
 import { createId } from "@/lib/utils";
 import type { EducationLevel } from "@/types/common";
 import type { EducationModule, ExtractedEvent, ImportedDocument, SchoolEvent } from "@/types/domain";
@@ -71,6 +72,8 @@ class DefaultExtractedEventImporter implements ExtractedEventImporter {
     const updatedEventIds: string[] = [];
     const skippedExtractedIds: string[] = [];
     const nextEvents = [...existingEvents];
+    const importBatchId = createId("event-import-batch");
+    const importedAt = new Date().toISOString();
 
     let imported = 0;
     let skipped = 0;
@@ -91,7 +94,9 @@ class DefaultExtractedEventImporter implements ExtractedEventImporter {
         extractedEvent,
         modules,
         sourceDocument,
-        duplicate && options.duplicateResolution === "replace_existing" ? replacementId : undefined
+        duplicate && options.duplicateResolution === "replace_existing" ? replacementId : undefined,
+        duplicate && options.duplicateResolution === "replace_existing" ? undefined : importBatchId,
+        importedAt
       );
 
       if (duplicate && options.duplicateResolution === "replace_existing") {
@@ -128,12 +133,14 @@ function createSchoolEventFromExtractedEvent(
   extractedEvent: ExtractedEvent,
   modules: EducationModule[],
   sourceDocument?: ImportedDocument,
-  id = createId("event")
+  id = createId("event"),
+  importBatchId?: string,
+  importedAt?: string
 ): SchoolEvent {
   const sourceTitle = sourceDocument?.title ?? "документ удален";
   const confidence = Math.round(extractedEvent.confidence * 100);
 
-  return {
+  const event: SchoolEvent = {
     id,
     title: extractedEvent.title,
     description: `${extractedEvent.description}\n\nИсточник документа: ${sourceTitle}. Уверенность распознавания: ${confidence}%.`,
@@ -151,11 +158,17 @@ function createSchoolEventFromExtractedEvent(
     sourceDocumentId: extractedEvent.sourceDocumentId,
     sourceDocumentTitle: sourceTitle,
     sourceDocumentType: extractedEvent.sourceType,
+    importBatchId,
+    importedAt,
     status: "planned",
     participantsCount: 0,
     shortReport: `Импортировано из документа "${sourceTitle}". Требуется проверка карточки мероприятия.`,
     priority: "medium"
   };
+
+  return importBatchId
+    ? { ...event, importedContentSignature: createImportedContentSignature(event) }
+    : event;
 }
 
 function findDuplicateCandidates(extractedEvents: ExtractedEvent[], existingEvents: SchoolEvent[]) {

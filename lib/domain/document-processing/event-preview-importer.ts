@@ -1,4 +1,5 @@
 import { DEFAULT_MODULE_ID } from "@/lib/domain/modules";
+import { createImportedContentSignature } from "@/lib/domain/import-history";
 import { createId } from "@/lib/utils";
 import type { EducationLevel } from "@/types/common";
 import type {
@@ -137,7 +138,7 @@ function createSchoolEventFromPreview(
   const moduleId = inferModuleIdFromPreview(previewEvent, context?.modules);
   const responsible = previewEvent.responsibleText.trim() || "Требуется назначить ответственного";
 
-  return {
+  const event: SchoolEvent = {
     id: createId("event"),
     title: previewEvent.title.trim(),
     description: [
@@ -175,6 +176,11 @@ function createSchoolEventFromPreview(
     participantsCount: 0,
     shortReport: "Импортировано из предварительного распознавания документа. Требуется ручная проверка карточки мероприятия.",
     priority: "medium"
+  };
+
+  return {
+    ...event,
+    importedContentSignature: createImportedContentSignature(event)
   };
 }
 

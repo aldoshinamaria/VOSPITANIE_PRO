@@ -1,6 +1,7 @@
 "use client";
 
 import { Award, CalendarX, CheckCircle2, Pencil, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
+import Link from "next/link";
 import * as React from "react";
 
 import { useAppState } from "@/components/app/app-provider";
@@ -996,7 +997,7 @@ export default function EventsPage() {
                     );
 
                     return (
-                      <TableRow key={event.id}>
+                      <TableRow id={`event-${event.id}`} key={event.id} className="scroll-mt-6">
                         <TableCell className="whitespace-nowrap">
                           <div className="font-medium">{monthLabels[event.month]}</div>
                           <div className="text-xs text-muted-foreground">
@@ -1009,6 +1010,17 @@ export default function EventsPage() {
                           <div className="mt-1 text-xs text-muted-foreground">{event.description}</div>
                           <div className="mt-2 text-xs">Классы: {event.classes}</div>
                           {event.venue ? <div className="text-xs text-muted-foreground">Место: {event.venue}</div> : null}
+                          {event.sourceDocumentId ? (
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <Badge variant="outline">Импортировано</Badge>
+                              <Link
+                                className="text-xs text-sky-700 underline-offset-2 hover:underline"
+                                href={`/document-processing#document-${encodeURIComponent(event.sourceDocumentId)}`}
+                              >
+                                Источник: {event.sourceDocumentName ?? event.sourceDocumentTitle ?? "документ"}
+                              </Link>
+                            </div>
+                          ) : null}
                         </TableCell>
                         <TableCell className="min-w-56">
                           <div className="font-medium">{educationModule?.title ?? "Модуль не выбран"}</div>

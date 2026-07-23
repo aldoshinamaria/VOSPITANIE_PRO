@@ -29,6 +29,7 @@ export interface SchoolEvent {
   sourcePreviewEventId?: string;
   importBatchId?: string;
   importedAt?: string;
+  importedContentSignature?: string;
   sourceType?: DocumentSourceType;
   sourceConfidence?: number;
   status: EventStatus;

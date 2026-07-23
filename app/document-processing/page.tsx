@@ -832,7 +832,7 @@ function ProcessedDocumentCard({
   const previewCount = countStructuredPreviewItems(preview);
 
   return (
-    <div className="rounded-md border p-4">
+    <div id={`document-${document.id}`} className="scroll-mt-6 rounded-md border p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="font-medium">{document.title}</div>

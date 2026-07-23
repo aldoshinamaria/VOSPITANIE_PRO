@@ -70,6 +70,13 @@ alter table public.events add column if not exists system_partner_id text not nu
 alter table public.events add column if not exists source_document_id text not null default '';
 alter table public.events add column if not exists source_document_title text not null default '';
 alter table public.events add column if not exists source_document_type text not null default '';
+alter table public.events add column if not exists source_document_name text not null default '';
+alter table public.events add column if not exists source_preview_event_id text not null default '';
+alter table public.events add column if not exists import_batch_id text not null default '';
+alter table public.events add column if not exists imported_at text not null default '';
+alter table public.events add column if not exists imported_content_signature text not null default '';
+alter table public.events add column if not exists source_type text not null default '';
+alter table public.events add column if not exists source_confidence integer not null default 0;
 
 create table if not exists public.educational_associations (
   id text primary key,
