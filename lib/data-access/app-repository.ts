@@ -224,7 +224,12 @@ function normalizePartner(partner: SocialPartner | string, index: number): Socia
     id: partner.id || `partner-${index + 1}`,
     name: partner.name || "",
     type: partner.type || "",
-    activity: partner.activity || ""
+    activity: partner.activity || "",
+    officialName: partner.officialName || partner.name || "",
+    directoryEntryId: partner.directoryEntryId || "",
+    source: partner.source ?? "manual",
+    region: partner.region || "",
+    municipality: partner.municipality || ""
   };
 }
 

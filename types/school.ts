@@ -25,6 +25,13 @@ export interface SchoolInfrastructure {
   eagletsOfRussia: boolean;
   childInitiativesCenter: boolean;
   schoolParliament: boolean;
+  customItems?: SchoolCustomInfrastructure[];
+}
+
+export interface SchoolCustomInfrastructure {
+  id: string;
+  title: string;
+  description: string;
 }
 
 export interface SocialPartner {
@@ -32,4 +39,9 @@ export interface SocialPartner {
   name: string;
   type: string;
   activity: string;
+  officialName?: string;
+  directoryEntryId?: string;
+  source?: "manual" | "directory";
+  region?: string;
+  municipality?: string;
 }

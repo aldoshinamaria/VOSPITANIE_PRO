@@ -94,7 +94,7 @@ export interface SchoolRow {
   academic_year: string;
   students_count: number;
   classes_count: number;
-  infrastructure: Record<string, boolean>;
+  infrastructure: Record<string, unknown>;
   updated_at: string;
 }
 

@@ -23,7 +23,6 @@ import { createId } from "@/lib/utils";
 import type {
   EducationalAssociation,
   EducationalAssociationType,
-  EducationalSystemPartner,
   EducationalSystemStatus,
   InfrastructureObjectType,
   SchoolInfrastructureObject
@@ -31,7 +30,6 @@ import type {
 
 type AssociationForm = Omit<EducationalAssociation, "id">;
 type InfrastructureForm = Omit<SchoolInfrastructureObject, "id">;
-type PartnerForm = Omit<EducationalSystemPartner, "id">;
 
 const emptyAssociationForm: AssociationForm = {
   type: "volunteer_team",
@@ -51,18 +49,10 @@ const emptyInfrastructureForm: InfrastructureForm = {
   responsible: ""
 };
 
-const emptyPartnerForm: PartnerForm = {
-  title: "",
-  type: "",
-  cooperationDescription: "",
-  contactPerson: ""
-};
-
 export default function EducationalSystemPage() {
   const { state, updateState, isSaving } = useAppState();
   const [associationForm, setAssociationForm] = React.useState<AssociationForm>(emptyAssociationForm);
   const [infrastructureForm, setInfrastructureForm] = React.useState<InfrastructureForm>(emptyInfrastructureForm);
-  const [partnerForm, setPartnerForm] = React.useState<PartnerForm>(emptyPartnerForm);
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -72,7 +62,7 @@ export default function EducationalSystemPage() {
   const readinessCompleted = [
     system.associations.length > 0,
     system.infrastructureObjects.length > 0,
-    system.partners.length > 0,
+    state.schoolPassport.socialPartners.length > 0,
     activeAssociations > 0
   ].filter(Boolean).length;
 
@@ -90,12 +80,6 @@ export default function EducationalSystemPage() {
     value: InfrastructureForm[TField]
   ) {
     setInfrastructureForm((current) => ({ ...current, [field]: value }));
-    setMessage(null);
-    setError(null);
-  }
-
-  function setPartnerField<TField extends keyof PartnerForm>(field: TField, value: PartnerForm[TField]) {
-    setPartnerForm((current) => ({ ...current, [field]: value }));
     setMessage(null);
     setError(null);
   }
@@ -161,36 +145,6 @@ export default function EducationalSystemPage() {
     }
   }
 
-  async function addPartner() {
-    if (!partnerForm.title.trim() || !partnerForm.type.trim()) {
-      setError("Укажите название и тип социального партнера.");
-      return;
-    }
-
-    const nextPartner: EducationalSystemPartner = {
-      ...partnerForm,
-      id: createId("system-partner"),
-      title: partnerForm.title.trim(),
-      type: partnerForm.type.trim(),
-      cooperationDescription: partnerForm.cooperationDescription.trim(),
-      contactPerson: partnerForm.contactPerson.trim()
-    };
-
-    try {
-      await updateState((current) => ({
-        ...current,
-        educationalSystem: {
-          ...current.educationalSystem,
-          partners: [nextPartner, ...current.educationalSystem.partners]
-        }
-      }));
-      setPartnerForm(emptyPartnerForm);
-      setMessage("Социальный партнер добавлен в воспитательную систему.");
-    } catch {
-      setMessage(null);
-    }
-  }
-
   async function removeAssociation(id: string) {
     try {
       await updateState((current) => ({
@@ -225,23 +179,6 @@ export default function EducationalSystemPage() {
     }
   }
 
-  async function removePartner(id: string) {
-    try {
-      await updateState((current) => ({
-        ...current,
-        educationalSystem: {
-          ...current.educationalSystem,
-          partners: current.educationalSystem.partners.filter((partner) => partner.id !== id)
-        },
-        events: current.events.map((event) =>
-          event.systemPartnerId === id ? { ...event, systemPartnerId: "" } : event
-        )
-      }));
-    } catch {
-      return;
-    }
-  }
-
   return (
     <>
       <PageHeader
@@ -267,7 +204,7 @@ export default function EducationalSystemPage() {
         <MetricCard title="Объединений" value={system.associations.length} icon={Network} />
         <MetricCard title="Активных" value={activeAssociations} icon={Users} />
         <MetricCard title="Участников" value={totalParticipants} icon={Users} />
-        <MetricCard title="Партнеров" value={system.partners.length} icon={Handshake} />
+        <MetricCard title="Партнеров" value={state.schoolPassport.socialPartners.length} icon={Handshake} />
       </div>
 
       {message ? (
@@ -494,64 +431,35 @@ export default function EducationalSystemPage() {
         <Card>
           <CardHeader>
             <CardTitle>Социальные партнеры</CardTitle>
-            <CardDescription>Справочник партнеров для связи с мероприятиями и будущей генерации КПВР.</CardDescription>
+            <CardDescription>
+              Единый список партнеров ведется в паспорте школы, чтобы не вводить одни и те же организации дважды.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid items-stretch gap-4 lg:grid-cols-3">
-              <FormField
-                label="Название"
-                required
-                value={partnerForm.title}
-                placeholder="Например: Музей истории города Обнинска"
-                onChange={(event) => setPartnerField("title", event.target.value)}
-                help={<FieldHint>Укажите конкретную организацию, с которой школа проводит совместную работу.</FieldHint>}
-              />
-              <FormField
-                label="Тип"
-                required
-                value={partnerForm.type}
-                placeholder="Например: музей, библиотека, колледж, учреждение культуры"
-                onChange={(event) => setPartnerField("type", event.target.value)}
-                help={<FieldHint>Укажите вид организации, а не ее название.</FieldHint>}
-              />
-              <FormField
-                label="Контактное лицо"
-                value={partnerForm.contactPerson}
-                placeholder="Например: Смирнова Елена Олеговна"
-                onChange={(event) => setPartnerField("contactPerson", event.target.value)}
-              />
-              <TextareaField
-                className="lg:col-span-3"
-                label="Описание сотрудничества"
-                value={partnerForm.cooperationDescription}
-                placeholder="Например: экскурсии, уроки мужества, профориентационные встречи, совместные акции"
-                onChange={(event) => setPartnerField("cooperationDescription", event.target.value)}
-                help={<FieldHint documents={["Рабочая программа", "Проверка соответствия"]}>Опишите конкретные формы совместной работы. Эти данные попадут в описание социального партнерства.</FieldHint>}
-              />
+            <div className="rounded-md border bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
+              Добавляйте и редактируйте социальных партнеров в паспорте школы. Здесь они отображаются как часть воспитательной системы и используются для связей с мероприятиями.
             </div>
-            <Button className="w-fit" onClick={addPartner} disabled={isSaving}>
-              <Plus className="h-4 w-4" />
-              Добавить партнера
-            </Button>
             <div className="grid items-stretch gap-4 xl:grid-cols-2">
-              {system.partners.map((partner) => (
+              {state.schoolPassport.socialPartners.map((partner) => (
                 <Card key={partner.id}>
                   <CardHeader className="flex-row items-start justify-between gap-3">
                     <div>
                       <Badge variant="outline">{partner.type}</Badge>
-                      <CardTitle className="mt-2">{partner.title}</CardTitle>
-                      <CardDescription className="mt-2">{partner.cooperationDescription}</CardDescription>
+                      <CardTitle className="mt-2">{partner.name}</CardTitle>
+                      <CardDescription className="mt-2">{partner.activity}</CardDescription>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => removePartner(partner.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </CardHeader>
-                  <CardContent className="text-sm">
-                    Контактное лицо: {partner.contactPerson || "не указано"}
-                  </CardContent>
                 </Card>
               ))}
             </div>
+            {state.schoolPassport.socialPartners.length === 0 ? (
+              <div className="rounded-md border border-dashed px-4 py-6 text-sm text-muted-foreground">
+                Социальные партнеры пока не добавлены в паспорт школы.
+              </div>
+            ) : null}
+            <Button className="w-fit" asChild variant="outline">
+              <a href="/school-passport">Открыть паспорт школы</a>
+            </Button>
           </CardContent>
         </Card>
 

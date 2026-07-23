@@ -136,6 +136,8 @@ export type DocumentProcessingStage =
   | "structure_extracted"
   | "normalized"
   | "validated"
+  | "classified"
+  | "preview_extracted"
   | "prepared_for_analysis"
   | "failed";
 

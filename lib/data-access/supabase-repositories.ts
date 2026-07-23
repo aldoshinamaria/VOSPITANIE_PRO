@@ -1186,10 +1186,30 @@ function mapExtraActivityToInsert(schoolId: string, program: ExtraActivity): Ext
   };
 }
 
-function normalizeInfrastructure(value: Record<string, boolean>): SchoolInfrastructure {
+function normalizeInfrastructure(value: Record<string, unknown>): SchoolInfrastructure {
+  const customItems = Array.isArray(value.customItems)
+    ? value.customItems
+        .filter((item): item is { id?: unknown; title?: unknown; description?: unknown } => typeof item === "object" && item !== null)
+        .map((item) => ({
+          id: typeof item.id === "string" ? item.id : createId("infrastructure"),
+          title: typeof item.title === "string" ? item.title : "",
+          description: typeof item.description === "string" ? item.description : ""
+        }))
+    : [];
+
   return {
     ...mockAppState.schoolPassport.infrastructure,
-    ...value
+    museum: value.museum === true,
+    mediaCenter: value.mediaCenter === true,
+    theater: value.theater === true,
+    sportsClub: value.sportsClub === true,
+    volunteerTeam: value.volunteerTeam === true,
+    yuid: value.yuid === true,
+    firstMovement: value.firstMovement === true,
+    eagletsOfRussia: value.eagletsOfRussia === true,
+    childInitiativesCenter: value.childInitiativesCenter === true,
+    schoolParliament: value.schoolParliament === true,
+    customItems
   };
 }
 

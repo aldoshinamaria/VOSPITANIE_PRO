@@ -189,7 +189,8 @@ function createPassport(template: DemoSchoolTemplateId): SchoolPassport {
       firstMovement: true,
       eagletsOfRussia: true,
       childInitiativesCenter: true,
-      schoolParliament: true
+      schoolParliament: true,
+      customItems: []
     },
     socialPartners: [
       {

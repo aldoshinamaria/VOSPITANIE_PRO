@@ -164,7 +164,7 @@ export type {
   WorkProgramComplianceResult,
   WorkProgramDiscrepancy
 } from "@/types/normative-documents";
-export type { SchoolInfrastructure, SchoolPassport, SocialPartner } from "@/types/school";
+export type { SchoolCustomInfrastructure, SchoolInfrastructure, SchoolPassport, SocialPartner } from "@/types/school";
 export type {
   SchoolReadinessArea,
   SchoolReadinessAreaId,

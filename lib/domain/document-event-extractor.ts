@@ -5,8 +5,8 @@ export interface DocumentEventExtractor {
 }
 
 class MetadataOnlyDocumentEventExtractor implements DocumentEventExtractor {
-  async extract(): Promise<ExtractedEvent[]> {
-    return [];
+  async extract(document: ImportedDocument): Promise<ExtractedEvent[]> {
+    return document.extractedEvents ?? [];
   }
 }
 

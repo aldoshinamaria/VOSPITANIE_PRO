@@ -11,7 +11,7 @@ run("work mode hides demo navigation and shows work onboarding", () => {
   assert.ok(hrefs.includes("/"));
   assert.ok(hrefs.includes("/launch-readiness"));
   assert.ok(hrefs.includes("/school-passport"));
-  assert.ok(hrefs.includes("/import-documents"));
+  assert.ok(!hrefs.includes("/import-documents"));
   assert.ok(hrefs.includes("/document-processing"));
   assert.ok(hrefs.includes("/work-program"));
 });

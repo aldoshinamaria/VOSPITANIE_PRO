@@ -23,7 +23,6 @@ import {
 } from "@/lib/domain/activity-directions";
 import {
   findAssociationById,
-  findEducationalSystemPartnerById,
   findInfrastructureObjectById
 } from "@/lib/domain/educational-system";
 import {
@@ -92,6 +91,8 @@ const competitionLevelLabels: Record<CompetitionLevel, string> = {
   federal: "Всероссийский"
 };
 
+const EVENT_STATUS_LABEL = "\u0421\u0442\u0430\u0442\u0443\u0441";
+
 const emptyForm: EventForm = {
   title: "",
   description: "",
@@ -155,6 +156,7 @@ export default function EventsPage() {
   const activeDirections = state.activityDirections.filter((direction) => direction.active);
   const directionStatistics = buildDirectionStatistics(state.activityDirections, state.eventDirectionRelations, state.events);
   const educationalSystem = state.educationalSystem;
+  const schoolPartners = state.schoolPassport.socialPartners;
   const derivedMonth = form.startDate ? getMonthFromDate(form.startDate) : null;
   const eventReadinessChecks = [
     Boolean(form.title.trim()),
@@ -808,19 +810,19 @@ export default function EventsPage() {
               <FieldHint>Связь поможет понять, где и на базе чего проводится мероприятие.</FieldHint>
             </label>
             <label className="grid h-full content-start gap-2 text-sm font-medium">
-              <FieldLabel label="Связь с партнером воспитательной системы" />
+              <FieldLabel label="Связь с социальным партнером школы" />
               <Select value={form.systemPartnerId} onChange={(event) => setField("systemPartnerId", event.target.value)}>
                 <option value="">Не связано с партнером</option>
-                {educationalSystem.partners.map((partner) => (
+                {schoolPartners.map((partner) => (
                   <option key={partner.id} value={partner.id}>
-                    {partner.title}
+                    {partner.name}
                   </option>
                 ))}
               </Select>
-              <FieldHint>Связанный партнер будет использоваться в рабочей программе и проверке соответствия.</FieldHint>
+              <FieldHint>Список берется из паспорта школы. Связанный партнер будет использоваться в рабочей программе и проверке соответствия.</FieldHint>
             </label>
             <label className="grid h-full content-start gap-2 text-sm font-medium">
-              <FieldLabel label="РЎС‚Р°С‚СѓСЃ" />
+              <FieldLabel label={EVENT_STATUS_LABEL} />
               <Select value={form.status} onChange={(event) => setField("status", event.target.value as EventStatus)}>
                 <option value="planned">Планируется</option>
                 <option value="completed">Проведено</option>
@@ -986,10 +988,7 @@ export default function EventsPage() {
                       educationalSystem.infrastructureObjects,
                       event.infrastructureObjectId
                     );
-                    const linkedPartner = findEducationalSystemPartnerById(
-                      educationalSystem.partners,
-                      event.systemPartnerId
-                    );
+                    const linkedPartner = schoolPartners.find((partner) => partner.id === event.systemPartnerId);
                     const eventDirections = getDirectionsForEvent(
                       event.id,
                       state.activityDirections,
@@ -1027,7 +1026,7 @@ export default function EventsPage() {
                             <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
                               {linkedAssociation ? <div>Объединение: {linkedAssociation.title}</div> : null}
                               {linkedInfrastructure ? <div>Инфраструктура: {linkedInfrastructure.title}</div> : null}
-                              {linkedPartner ? <div>Партнер: {linkedPartner.title}</div> : null}
+                              {linkedPartner ? <div>Партнер: {linkedPartner.name}</div> : null}
                             </div>
                           ) : null}
                         </TableCell>

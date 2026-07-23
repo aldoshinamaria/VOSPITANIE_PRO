@@ -13,6 +13,7 @@ export interface ImportedDocument {
   uploadedAt: string;
   sizeBytes: number;
   status: ImportedDocumentStatus;
+  extractedEvents?: ExtractedEvent[];
 }
 
 export interface ExtractedEvent {

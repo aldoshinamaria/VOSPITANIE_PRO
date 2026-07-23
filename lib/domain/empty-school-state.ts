@@ -28,7 +28,8 @@ export function createEmptySchoolState(): AppState {
         firstMovement: false,
         eagletsOfRussia: false,
         childInitiativesCenter: false,
-        schoolParliament: false
+        schoolParliament: false,
+        customItems: []
       },
       socialPartners: [],
       updatedAt: now
@@ -57,4 +58,3 @@ export function createEmptySchoolState(): AppState {
     workProgram: createWorkProgramAssembler().assemble(state)
   };
 }
-

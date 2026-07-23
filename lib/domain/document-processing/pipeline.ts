@@ -90,7 +90,7 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
       this.logger.log({
         documentId,
         fileName: storedFile.fileName,
-        stage: "validated",
+        stage: "classified",
         level: validated.validationStatus === "invalid" || validated.validationStatus === "requires_ocr" ? "warning" : "info",
         message: `Качество: ${validated.validationStatus}, ${validated.qualityScore} баллов.`
       });
@@ -109,7 +109,7 @@ export class DefaultDocumentProcessingPipeline implements DocumentProcessingPipe
       this.logger.log({
         documentId,
         fileName: storedFile.fileName,
-        stage: "prepared_for_analysis",
+        stage: "preview_extracted",
         level: "info",
         message: `Найдено мероприятий в preview: ${withEventPreview.extractedEventPreview?.length ?? 0}.`
       });

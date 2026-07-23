@@ -25,6 +25,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createDocumentEventExtractor } from "@/lib/domain/document-event-extractor";
+import { createDocumentProcessingPipeline } from "@/lib/domain/document-processing/pipeline";
 import {
   createExtractedEventImporter,
   type DuplicateResolution,
@@ -40,7 +41,9 @@ import {
 import { educationLevelLabels } from "@/lib/domain/events";
 import { createId } from "@/lib/utils";
 import type { EducationLevel } from "@/types/common";
+import type { DocumentEventPreview } from "@/types/document-processing";
 import type {
+  ExtractedEvent,
   ExtractedEventStatus,
   ImportedDocument,
   ImportedDocumentStatus,
@@ -78,7 +81,7 @@ type LevelFilter = "all" | EducationLevel;
 type RelevanceFilter = "all" | RelevanceLevel;
 
 export default function ImportDocumentsPage() {
-  const { state, updateState, isSaving } = useAppState();
+  const { mode, state, updateState, isSaving } = useAppState();
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [pendingExtractionId, setPendingExtractionId] = React.useState<string | null>(null);
@@ -139,26 +142,62 @@ export default function ImportDocumentsPage() {
       return;
     }
 
-    const now = new Date().toISOString();
-    const nextDocuments: ImportedDocument[] = selectedFiles.map((file) => ({
-      id: createId("import"),
-      title: file.name,
-      type: getDocumentType(file.name) as ImportedDocumentType,
-      uploadedAt: now,
-      sizeBytes: file.size,
-      status: "uploaded"
-    }));
-
     try {
+      const now = new Date().toISOString();
+      const processedDocuments = await Promise.all(
+        selectedFiles.map(async (file) => {
+          const type = getDocumentType(file.name) as ImportedDocumentType;
+          const documentId = createId("import");
+
+          try {
+            // The pipeline owns an in-memory log. Isolate it per file when
+            // several documents are processed concurrently.
+            const processingPipeline = createDocumentProcessingPipeline(mode);
+            const result = await processingPipeline.process(file, "import");
+            const previews = result.normalizedDocument.structuredPreview?.events ?? result.normalizedDocument.extractedEventPreview ?? [];
+
+            return {
+              document: {
+                id: documentId,
+                title: file.name,
+                type,
+                uploadedAt: now,
+                sizeBytes: file.size,
+                status: "uploaded" as ImportedDocumentStatus,
+                extractedEvents: previews.flatMap((preview) => toExtractedEvents(preview, documentId, type))
+              },
+              logs: result.logs
+            };
+          } catch {
+            return {
+              document: {
+                id: documentId,
+                title: file.name,
+                type,
+                uploadedAt: now,
+                sizeBytes: file.size,
+                status: "error" as ImportedDocumentStatus,
+                extractedEvents: []
+              },
+              logs: []
+            };
+          }
+        })
+      );
+      const nextDocuments = processedDocuments.map((item) => item.document);
+      const nextLogs = processedDocuments.flatMap((item) => item.logs);
+
       await updateState((current) => ({
         ...current,
-        importedDocuments: [...nextDocuments, ...current.importedDocuments]
+        importedDocuments: [...nextDocuments, ...current.importedDocuments],
+        documentProcessingLogs: [...nextLogs, ...current.documentProcessingLogs].slice(0, 200)
       }));
       setError(null);
       setImportReport(null);
-      setMessage(`Добавлено файлов: ${nextDocuments.length}. Для просмотра событий нажмите «Найти мероприятия».`);
+      setMessage(`Добавлено файлов: ${nextDocuments.length}. Для просмотра найденных событий нажмите «Найти мероприятия».`);
     } catch {
       setMessage(null);
+      setError("Не удалось загрузить и проанализировать документы.");
     } finally {
       resetInput();
     }
@@ -320,15 +359,15 @@ export default function ImportDocumentsPage() {
   return (
     <>
       <PageHeader
-        title="Импорт документов"
-        description="Загрузка DOCX, PDF и XLSX, поиск мероприятий и импорт проверенных событий в основной реестр."
+        title="Импорт мероприятий из документов"
+        description="Вспомогательный сценарий для старого потока: файл, найденные мероприятия, подтверждение и импорт в основной реестр."
       />
 
       <Card className="mb-6 border-sky-200 bg-sky-50">
         <CardContent className="flex flex-col gap-3 p-4 text-sm text-slate-700 md:flex-row md:items-center md:justify-between">
           <div>
-            Этот раздел предназначен для сценария «файл → найденные мероприятия → импорт в реестр».
-            Для общего анализа структуры документа используйте основной документный экран.
+            Основной сценарий загрузки и анализа документов находится в разделе «Загрузка и анализ документов».
+            Этот экран оставлен для отдельного импорта найденных мероприятий в реестр.
           </div>
           <Button asChild variant="outline">
             <Link href="/document-processing">Открыть общий анализ документов</Link>
@@ -768,6 +807,90 @@ function getRelevanceRowClassName(level: RelevanceLevel) {
   return classNames[level];
 }
 
+function toExtractedEvents(
+  preview: DocumentEventPreview,
+  sourceDocumentId: string,
+  sourceType: ImportedDocumentType
+): ExtractedEvent[] {
+  if (preview.category !== "REAL_EVENT" || preview.sourceState === "rejected" || preview.qualityScore < 50 || !preview.title.trim()) {
+    return [];
+  }
+
+  const levels = normalizePreviewLevels(preview.educationLevels, preview.sourceDocumentName);
+
+  return levels.map((educationLevel) => ({
+    id: `${preview.id}-${educationLevel}`,
+    title: preview.title.trim(),
+    description: preview.sourceFragment.trim() || preview.qualityReason,
+    date: buildEventDate(preview),
+    month: preview.month ?? 9,
+    educationLevel,
+    module: inferLegacyModule(preview),
+    responsible: preview.responsibleText.trim() || "Требуется назначить ответственного",
+    sourceDocumentId,
+    sourceType,
+    confidence: Math.min(1, Math.max(0, preview.confidence / 100)),
+    status: "found"
+  }));
+}
+
+function normalizePreviewLevels(levels: string[], sourceName: string): EducationLevel[] {
+  const text = `${levels.join(" ")} ${sourceName}`.toLowerCase().replace(/ё/g, "е");
+  const detected = new Set<EducationLevel>();
+
+  if (text.includes("ноо") || text.includes("начальн")) detected.add("noo");
+  if (text.includes("ооо") || text.includes("основн")) detected.add("ooo");
+  if (text.includes("соо") || text.includes("средн")) detected.add("soo");
+
+  return detected.size > 0 ? Array.from(detected) : ["noo"];
+}
+
+function inferLegacyModule(preview: DocumentEventPreview) {
+  const text = `${preview.title} ${preview.sourceFragment} ${preview.matchedSignals.join(" ")}`.toLowerCase();
+
+  if (text.includes("классн")) return "Классное руководство";
+  if (text.includes("родител")) return "Взаимодействие с родителями";
+  if (text.includes("профориентац")) return "Профориентация";
+  if (text.includes("самоуправ")) return "Самоуправление";
+  if (text.includes("волонтер") || text.includes("добровол")) return "Добровольческая деятельность";
+  if (text.includes("музей")) return "Школьный музей";
+  if (text.includes("медиа")) return "Школьные медиа";
+  if (text.includes("урок") || text.includes("разговоры о важном")) return "Урочная деятельность";
+  if (text.includes("внеуроч")) return "Внеурочная деятельность";
+
+  return "Основные школьные дела";
+}
+
+function buildEventDate(preview: DocumentEventPreview) {
+  const currentYear = new Date().getFullYear();
+  const dateMatch = preview.dateText.match(/(\d{1,2})[.\-/](\d{1,2})(?:[.\-/](\d{2,4}))?/);
+
+  if (dateMatch) {
+    const parsedDay = clampNumber(Number(dateMatch[1]), 1, 28);
+    const parsedMonth = clampNumber(Number(dateMatch[2]), 1, 12);
+    const day = String(parsedDay).padStart(2, "0");
+    const month = String(parsedMonth).padStart(2, "0");
+    const year = dateMatch[3] ? normalizeYear(dateMatch[3]) : String(currentYear);
+
+    return `${year}-${month}-${day}`;
+  }
+
+  const month = String(clampNumber(preview.month ?? 9, 1, 12)).padStart(2, "0");
+  return `${currentYear}-${month}-01`;
+}
+
+function normalizeYear(value: string) {
+  return value.length === 2 ? `20${value}` : value;
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+
+  return Math.min(max, Math.max(min, value));
+}
+
 function getDocumentType(fileName: string): ImportedDocumentType | null {
   const extension = fileName.split(".").pop()?.toLowerCase();
 
@@ -801,9 +924,15 @@ function formatDateTime(value: string) {
 }
 
 function formatDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "требует проверки";
+  }
+
   return new Intl.DateTimeFormat("ru-RU", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric"
-  }).format(new Date(value));
+  }).format(date);
 }

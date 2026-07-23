@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BookOpen, Clock, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { BookOpen, Clock, Pencil, Save, Trash2, Users } from "lucide-react";
 
 import { useAppState } from "@/components/app/app-provider";
 import { FieldHint, NextStepHint, ReadinessIndicator, SectionGuide } from "@/components/app/field-guide";
@@ -28,6 +28,26 @@ import type { EducationLevel, ExtraActivity, ExtraActivityStatus, ExtraActivityT
 
 type FormState = Omit<ExtraActivity, "id" | "totalHours">;
 type Errors = Partial<Record<keyof FormState, string>>;
+
+const extraActivityAreaOptions: Record<ExtraActivityType, string[]> = {
+  extracurricular: [
+    "Спортивно-оздоровительная деятельность",
+    "Проектно-исследовательская деятельность",
+    "Коммуникативная деятельность",
+    "Художественно-эстетическая творческая деятельность",
+    "Информационная культура",
+    "Интеллектуальные марафоны",
+    "«Учение с увлечением!»"
+  ],
+  additional_education: [
+    "Техническая",
+    "Естественнонаучная",
+    "Физкультурно-спортивная",
+    "Художественная",
+    "Туристско-краеведческая",
+    "Социально-гуманитарная"
+  ]
+};
 
 const emptyForm: FormState = {
   title: "",
@@ -83,6 +103,12 @@ export default function ExtraActivitiesPage() {
     setSavedMessage(null);
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
+  }
+
+  function setProgramType(type: ExtraActivityType) {
+    setSavedMessage(null);
+    setForm((current) => ({ ...current, type, area: "" }));
+    setErrors((current) => ({ ...current, type: undefined, area: undefined }));
   }
 
   function toggleLevel(level: EducationLevel) {
@@ -233,7 +259,7 @@ export default function ExtraActivitiesPage() {
             />
             <label className="grid h-full content-start gap-2 text-sm font-medium">
               <FieldLabel label="Тип" required />
-              <Select value={form.type} onChange={(event) => setField("type", event.target.value as ExtraActivityType)}>
+              <Select value={form.type} onChange={(event) => setProgramType(event.target.value as ExtraActivityType)}>
                 {Object.entries(extraActivityTypeLabels).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -241,15 +267,22 @@ export default function ExtraActivitiesPage() {
                 ))}
               </Select>
             </label>
-            <FormField
-              label="Направление"
-              required
-              value={form.area}
-              error={errors.area}
-              placeholder="Например: социальное"
-              onChange={(event) => setField("area", event.target.value)}
-              help={<FieldHint>Направление помогает группировать программы и видеть баланс воспитательной работы.</FieldHint>}
-            />
+            <label className="grid h-full content-start gap-2 text-sm font-medium">
+              <FieldLabel label="Направление" required />
+              <Select value={form.area} onChange={(event) => setField("area", event.target.value)}>
+                <option value="">Выберите направление</option>
+                {form.area && !extraActivityAreaOptions[form.type].includes(form.area) ? (
+                  <option value={form.area}>{form.area}</option>
+                ) : null}
+                {extraActivityAreaOptions[form.type].map((area) => (
+                  <option key={area} value={area}>
+                    {area}
+                  </option>
+                ))}
+              </Select>
+              <FieldError error={errors.area} />
+              <FieldHint>Направление помогает группировать программы и видеть баланс воспитательной работы.</FieldHint>
+            </label>
           </div>
 
           <div className="grid items-stretch gap-4 lg:grid-cols-3">
@@ -339,8 +372,8 @@ export default function ExtraActivitiesPage() {
 
           <div className="flex flex-wrap gap-2">
             <Button onClick={saveProgram} disabled={isSaving}>
-              <Plus className="mr-2 h-4 w-4" />
-              {editingId ? "Сохранить изменения" : "Добавить программу"}
+              <Save className="mr-2 h-4 w-4" />
+              {editingId ? "Сохранить изменения" : "Сохранить программу"}
             </Button>
             <Button variant="outline" onClick={resetForm}>
               Очистить

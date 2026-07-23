@@ -184,17 +184,5 @@ function resolveMode(pathname: string | null): AppMode {
     return "demo";
   }
 
-  if (typeof window === "undefined") {
-    return "work";
-  }
-
-  if (isPublicDemoHost(window.location.hostname) && window.localStorage.getItem(APP_MODE_STORAGE_KEY) !== "work") {
-    return "demo";
-  }
-
-  return window.localStorage.getItem(APP_MODE_STORAGE_KEY) === "demo" ? "demo" : "work";
-}
-
-function isPublicDemoHost(hostname: string) {
-  return hostname === "vospitanie-pro.vercel.app";
+  return "work";
 }

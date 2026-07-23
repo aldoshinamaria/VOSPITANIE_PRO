@@ -78,8 +78,8 @@ export const navItems = [
   { group: text.checksDocuments, title: text.workProgram, href: "/work-program", icon: ScrollText, modes: ["work"] },
   { group: text.checksDocuments, title: text.complianceCheck, href: "/compliance-check", icon: ShieldCheck, modes: ["work"] },
   { group: text.checksDocuments, title: text.inspectionCenter, href: "/inspection-center", icon: SearchCheck, modes: ["work"] },
-  { group: text.tools, title: text.importEvents, href: "/import-documents", icon: FileInput, modes: ["work"] },
   { group: text.tools, title: text.documentProcessing, href: "/document-processing", icon: FileInput, modes: ["work"] },
+  { group: text.tools, title: text.importEvents, href: "/import-documents", icon: FileInput, modes: ["hidden"] },
   { group: text.tools, title: text.federalKnowledge, href: "/federal-knowledge", icon: LibraryBig, modes: ["work"] },
   { group: text.tools, title: text.educationModules, href: "/education-modules", icon: BookOpenCheck, modes: ["work"] },
   { group: text.tools, title: text.exports, href: "/exports", icon: FileArchive, modes: ["work"] }

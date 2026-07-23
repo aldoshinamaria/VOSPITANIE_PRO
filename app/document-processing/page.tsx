@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { createUnknownDocumentClassification } from "@/lib/domain/document-processing/classifier";
 import { createDocumentEventPreviewImporter } from "@/lib/domain/document-processing/event-preview-importer";
@@ -292,11 +293,11 @@ export default function DocumentProcessingPage() {
       <Card className="mt-6 border-sky-200 bg-sky-50">
         <CardContent className="flex flex-col gap-3 p-4 text-sm text-slate-700 md:flex-row md:items-center md:justify-between">
           <div>
-            Этот экран показывает анализ, классификацию и редактируемый preview. Если нужен старый поток извлечения мероприятий с импортом
-            в реестр, откройте отдельный раздел импорта.
+            Это основной экран загрузки документов. Здесь файл проходит анализ, классификацию, preview и подтверждение результата.
+            Данные не попадают в рабочие разделы без отдельного действия пользователя.
           </div>
           <Button asChild variant="outline">
-            <Link href="/import-documents">Открыть импорт мероприятий</Link>
+            <Link href="/import-documents">Открыть отдельный импорт мероприятий</Link>
           </Button>
         </CardContent>
       </Card>
@@ -407,22 +408,62 @@ function DocumentReview({
   setPreview: React.Dispatch<React.SetStateAction<DocumentStructuredPreview | null>>;
   onConfirm: () => void;
 }) {
+  const classification = document.classification ?? createUnknownDocumentClassification(document.createdAt);
+  const eventStats = getEventPreviewStats(preview.events);
+  const detectedLevels = getDetectedEducationLevels(preview.events, preview.educationLevels);
+
   return (
     <Card className="mt-6">
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle>Редактируемый preview: {document.title}</CardTitle>
-            <CardDescription>Исправьте найденные данные, удалите лишнее, отклоните сомнительное или добавьте недостающее вручную.</CardDescription>
+            <CardTitle>Результат анализа: {document.title}</CardTitle>
+            <CardDescription>Сначала проверьте тип документа и найденные мероприятия. Подробные поля открываются только при необходимости.</CardDescription>
           </div>
           <ValidationBadge status={document.validationStatus} score={document.qualityScore} />
         </div>
       </CardHeader>
       <CardContent className="grid gap-5">
-        <DocumentMetadataGrid document={document} />
-        <ClassificationBlock classification={document.classification ?? createUnknownDocumentClassification(document.createdAt)} />
-        <EditableStructuredPreview preview={preview} setPreview={setPreview} document={document} />
-        <TextPreview document={document} />
+        <div className="grid gap-3 md:grid-cols-4">
+          <Summary title="Тип документа" value={documentKindLabels[classification.documentKind]} />
+          <Summary title="Уровень" value={detectedLevels || "требует проверки"} />
+          <Summary title="Найдено мероприятий" value={preview.events.length} />
+          <Summary title="Готово к импорту" value={eventStats.realEventCount} />
+        </div>
+
+        <div className="rounded-md border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950">
+          <div className="font-semibold">Что делать дальше</div>
+          <div className="mt-1">
+            Проверьте найденные мероприятия. Если список выглядит корректно, нажмите «Подтвердить результат анализа».
+            После подтверждения появится отдельный шаг применения мероприятий в рабочий реестр.
+          </div>
+        </div>
+
+        <EventPreviewSummary events={preview.events} />
+
+        <details className="rounded-md border bg-white">
+          <summary className="cursor-pointer px-4 py-3 font-medium">Проверить и исправить найденные мероприятия</summary>
+          <div className="border-t p-4">
+            <EditableEventPreview preview={preview} setPreview={setPreview} document={document} />
+          </div>
+        </details>
+
+        <details className="rounded-md border bg-white">
+          <summary className="cursor-pointer px-4 py-3 font-medium">Паспорт, модули, партнеры, ответственные и другие найденные данные</summary>
+          <div className="border-t p-4">
+            <EditableEntityPreview preview={preview} setPreview={setPreview} document={document} />
+          </div>
+        </details>
+
+        <details className="rounded-md border bg-white">
+          <summary className="cursor-pointer px-4 py-3 font-medium">Технические данные анализа</summary>
+          <div className="grid gap-4 border-t p-4">
+            <DocumentMetadataGrid document={document} />
+            <ClassificationBlock classification={classification} />
+            <TextPreview document={document} />
+          </div>
+        </details>
+
         <Button onClick={onConfirm} disabled={document.validationStatus === "invalid" || document.validationStatus === "requires_ocr"}>
           <CheckCircle2 className="h-4 w-4" />
           Подтвердить результат анализа
@@ -432,7 +473,7 @@ function DocumentReview({
   );
 }
 
-function EditableStructuredPreview({
+function EditableEntityPreview({
   preview,
   setPreview,
   document
@@ -459,22 +500,10 @@ function EditableStructuredPreview({
     setPreview((current) => current ? { ...current, [groupKey]: [...current[groupKey], createManualEntity(document, kind, title)] } : current);
   }
 
-  function updateEvent(id: string, patch: Partial<DocumentEventPreview>) {
-    setPreview((current) => current ? { ...current, events: current.events.map((event) => (event.id === id ? { ...event, ...patch } : event)) } : current);
-  }
-
-  function removeEvent(id: string) {
-    setPreview((current) => current ? { ...current, events: current.events.filter((event) => event.id !== id) } : current);
-  }
-
-  function addEvent() {
-    setPreview((current) => current ? { ...current, events: [...current.events, createManualEvent(document)] } : current);
-  }
-
   return (
     <div className="grid gap-4">
       <div className="rounded-md border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
-        Preview можно редактировать и подтверждать, но он не импортируется в рабочие разделы. Это подготовка к следующему этапу безопасного импорта.
+        Эти данные сохраняются только в подтвержденном результате анализа. Они не попадут в паспорт школы, партнеров или другие рабочие разделы на этом шаге.
       </div>
 
       {entityGroups.map((group) => (
@@ -506,6 +535,36 @@ function EditableStructuredPreview({
           </CardContent>
         </Card>
       ))}
+    </div>
+  );
+}
+
+function EditableEventPreview({
+  preview,
+  setPreview,
+  document
+}: {
+  preview: DocumentStructuredPreview;
+  setPreview: React.Dispatch<React.SetStateAction<DocumentStructuredPreview | null>>;
+  document: NormalizedDocument;
+}) {
+  function updateEvent(id: string, patch: Partial<DocumentEventPreview>) {
+    setPreview((current) => current ? { ...current, events: current.events.map((event) => (event.id === id ? { ...event, ...patch } : event)) } : current);
+  }
+
+  function removeEvent(id: string) {
+    setPreview((current) => current ? { ...current, events: current.events.filter((event) => event.id !== id) } : current);
+  }
+
+  function addEvent() {
+    setPreview((current) => current ? { ...current, events: [...current.events, createManualEvent(document)] } : current);
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div className="rounded-md border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+        Исправьте только те строки, которые хотите сохранить в подтвержденном preview. Импорт в реестр мероприятий выполняется отдельной кнопкой после подтверждения.
+      </div>
 
       <Card>
         <CardHeader className="gap-3 md:flex-row md:items-center md:justify-between">
@@ -535,6 +594,63 @@ function EditableStructuredPreview({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function EventPreviewSummary({ events }: { events: DocumentEventPreview[] }) {
+  const stats = getEventPreviewStats(events);
+  const visibleEvents = events.filter((event) => event.category === "REAL_EVENT").slice(0, 10);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Найденные мероприятия</CardTitle>
+        <CardDescription>Краткая сводка без технических полей. Полный список можно открыть ниже.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-3 md:grid-cols-4">
+          <Summary title="Реальные мероприятия" value={stats.realEventCount} />
+          <Summary title="Формы работы" value={stats.workFormatCount} />
+          <Summary title="Направления" value={stats.directionCount} />
+          <Summary title="Шум" value={stats.noiseCount} />
+        </div>
+
+        {visibleEvents.length === 0 ? (
+          <EmptyState icon={FileSearch} title="Реальные мероприятия не найдены" description="Откройте полный preview и проверьте сомнительные записи вручную." />
+        ) : (
+          <div className="overflow-x-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Мероприятие</TableHead>
+                  <TableHead>Срок</TableHead>
+                  <TableHead>Уровень</TableHead>
+                  <TableHead>Ответственный</TableHead>
+                  <TableHead>Качество</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleEvents.map((event) => (
+                  <TableRow key={event.id}>
+                    <TableCell className="min-w-64 font-medium">{event.title}</TableCell>
+                    <TableCell>{event.dateText || "не найден"}</TableCell>
+                    <TableCell>{event.educationLevels.join(", ") || "не найден"}</TableCell>
+                    <TableCell className="min-w-56">{event.responsibleText || "не найден"}</TableCell>
+                    <TableCell>{event.qualityScore}%</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {events.length > visibleEvents.length ? (
+          <div className="text-sm text-muted-foreground">
+            Показаны первые {visibleEvents.length} реальных мероприятий из {events.length} найденных записей. Полный список доступен в блоке редактирования.
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1124,6 +1240,45 @@ function countStructuredPreviewItems(preview: DocumentStructuredPreview) {
     preview.educationLevels.length +
     preview.events.length
   );
+}
+
+function getEventPreviewStats(events: DocumentEventPreview[]) {
+  return {
+    realEventCount: events.filter((event) => event.category === "REAL_EVENT").length,
+    workFormatCount: events.filter((event) => event.category === "WORK_FORMAT").length,
+    directionCount: events.filter((event) => event.category === "ACTIVITY_DIRECTION").length,
+    noiseCount: events.filter((event) => event.category === "NOISE").length
+  };
+}
+
+function getDetectedEducationLevels(events: DocumentEventPreview[], levelEntities: DocumentEntityPreview[]) {
+  const levelLabels: Record<string, string> = {
+    noo: "НОО",
+    ooo: "ООО",
+    soo: "СОО",
+    "начальное общее образование": "НОО",
+    "основное общее образование": "ООО",
+    "среднее общее образование": "СОО"
+  };
+  const detected = new Set<string>();
+
+  events.forEach((event) => {
+    event.educationLevels.forEach((level) => {
+      const normalized = normalizeText(level);
+      detected.add(levelLabels[normalized] ?? level.toUpperCase());
+    });
+  });
+
+  levelEntities.forEach((entity) => {
+    const normalized = normalizeText(`${entity.title} ${entity.value}`);
+    Object.entries(levelLabels).forEach(([signal, label]) => {
+      if (normalized.includes(signal)) {
+        detected.add(label);
+      }
+    });
+  });
+
+  return Array.from(detected).filter(Boolean).join(", ");
 }
 
 function splitCsv(value: string) {
