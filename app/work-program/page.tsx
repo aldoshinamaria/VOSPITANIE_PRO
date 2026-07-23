@@ -15,6 +15,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { createWorkProgramAssembler } from "@/lib/domain/work-program/work-program-assembler";
 import { buildWorkProgramDocxBlob, getWorkProgramDocxFileName } from "@/lib/domain/work-program/work-program-export";
 import { buildWorkProgramPdfBlob, getWorkProgramPdfFileName } from "@/lib/domain/work-program/work-program-pdf";
+import {
+  buildWorkProgramVersionDiff,
+  type WorkProgramDiffStatus
+} from "@/lib/domain/work-program/work-program-version-diff";
 import { createId } from "@/lib/utils";
 import type {
   AppState,
@@ -48,6 +52,10 @@ export default function WorkProgramPage() {
   );
   const selectedVersion =
     selectedSectionVersions.find((version) => version.id === selectedVersionId) ?? selectedSectionVersions[0] ?? program.versions[0];
+  const selectedVersionDiff = React.useMemo(
+    () => (selectedVersion ? buildWorkProgramVersionDiff(selectedVersion, activeSection) : []),
+    [activeSection, selectedVersion]
+  );
 
   React.useEffect(() => {
     setSelectedVersionId(selectedSectionVersions[0]?.id ?? "");
@@ -405,6 +413,35 @@ export default function WorkProgramPage() {
               <div className="font-medium">{selectedVersion.changeSummary}</div>
               <div className="mt-1 text-muted-foreground">Источники версии: {selectedVersion.sourceSummary.join(", ") || "не указаны"}</div>
               {selectedVersion.progress ? <div className="mt-1 text-muted-foreground">Готовность версии: {selectedVersion.progress.percent}%</div> : null}
+              {selectedVersionDiff.length ? (
+                <div className="mt-4 grid gap-3">
+                  <div className="font-medium">Изменения относительно текущего раздела</div>
+                  {selectedVersionDiff.map((item) => (
+                    <div key={item.id} className="rounded-md border bg-white p-3">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{item.subsectionTitle}</Badge>
+                        <Badge variant="outline">Абзац {item.paragraphNumber}</Badge>
+                        <Badge variant="outline">{diffStatusLabel(item.status)}</Badge>
+                      </div>
+                      {item.status === "changed" || item.status === "removed" ? (
+                        <div className="rounded-md bg-rose-50 px-3 py-2 text-rose-900">
+                          <span className="font-medium">Было:</span> {item.previousText}
+                        </div>
+                      ) : null}
+                      {item.status === "changed" || item.status === "added" ? (
+                        <div className="mt-2 rounded-md bg-emerald-50 px-3 py-2 text-emerald-900">
+                          <span className="font-medium">Сейчас:</span> {item.currentText}
+                        </div>
+                      ) : null}
+                      {item.status === "unchanged" ? <div className="text-muted-foreground">{item.currentText}</div> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-3 text-muted-foreground">
+                  Для этой версии абзацное сравнение недоступно: выберите версию текущего раздела.
+                </div>
+              )}
               <Button className="mt-3" variant="outline" onClick={() => restoreVersion(selectedVersion)}>
                 Восстановить выбранную версию
               </Button>
@@ -418,6 +455,17 @@ export default function WorkProgramPage() {
       )}
     </>
   );
+}
+
+function diffStatusLabel(status: WorkProgramDiffStatus) {
+  const labels: Record<WorkProgramDiffStatus, string> = {
+    added: "Добавлено",
+    removed: "Удалено",
+    changed: "Изменено",
+    unchanged: "Без изменений"
+  };
+
+  return labels[status];
 }
 
 interface WorkProgramInputReadinessItem {
