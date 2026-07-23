@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 
+import { useAppState } from "@/components/app/app-provider";
 import { getNavItemsForMode } from "@/components/app/nav-items";
 import { cn } from "@/lib/utils";
 
@@ -18,12 +19,12 @@ const WORK_STATUS = "\u0420\u0430\u0431\u043e\u0447\u0438\u0435 \u0434\u0430\u04
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { mode } = useAppState();
   const [isOpen, setIsOpen] = React.useState(false);
   const [hasMounted, setHasMounted] = React.useState(false);
-  const effectiveMode = pathname?.startsWith("/demo") ? "demo" : "work";
-  const visibleNavItems = React.useMemo(() => (hasMounted ? getNavItemsForMode(effectiveMode) : []), [effectiveMode, hasMounted]);
+  const visibleNavItems = React.useMemo(() => (hasMounted ? getNavItemsForMode(mode) : []), [mode, hasMounted]);
   const isPublicDemoHost = hasMounted && window.location.hostname === "vospitanie-pro.vercel.app";
-  const homeHref = effectiveMode === "demo" ? "/demo" : isPublicDemoHost ? "/work" : "/";
+  const homeHref = mode === "demo" ? "/demo" : isPublicDemoHost ? "/work" : "/";
   const groupedItems = visibleNavItems.reduce(
     (groups, item) => {
       const group = groups.find((current) => current.title === item.group);
@@ -124,7 +125,7 @@ export function Sidebar() {
               </div>
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const href = isPublicDemoHost && effectiveMode === "work" && item.href === "/" ? "/work" : item.href;
+                const href = isPublicDemoHost && mode === "work" && item.href === "/" ? "/work" : item.href;
                 const isActive = pathname === item.href || pathname === href;
 
                 return (
@@ -147,7 +148,7 @@ export function Sidebar() {
         </nav>
 
         <div className="border-t border-white/10 p-4 text-xs text-slate-400">
-          {effectiveMode === "demo" ? DEMO_STATUS : WORK_STATUS}
+          {mode === "demo" ? DEMO_STATUS : WORK_STATUS}
         </div>
       </aside>
     </>

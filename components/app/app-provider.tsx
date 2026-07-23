@@ -4,6 +4,7 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 
 import { createModeAwareDataAccess } from "@/lib/data-access/mode-aware-data-access";
+import { resolveAppMode } from "@/lib/data-access/app-mode-routing";
 import { isSupabaseBackendEnabled } from "@/lib/data-access/backend-config";
 import { APP_MODE_STORAGE_KEY } from "@/lib/data-access/storage-keys";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -27,7 +28,10 @@ const AppContext = React.createContext<AppContextValue | null>(null);
 export function AppProvider({ children, initialState }: { children: React.ReactNode; initialState: AppState }) {
   const pathname = usePathname();
   const [mode, setMode] = React.useState<AppMode>(() =>
-    resolveMode(typeof window === "undefined" ? null : window.location.pathname)
+    resolveAppMode(
+      typeof window === "undefined" ? null : window.location.pathname,
+      typeof window === "undefined" ? null : window.localStorage.getItem(APP_MODE_STORAGE_KEY)
+    )
   );
   const dataAccess = React.useMemo(() => createModeAwareDataAccess(mode, initialState), [initialState, mode]);
   const [state, setState] = React.useState<AppState>(initialState);
@@ -42,7 +46,8 @@ export function AppProvider({ children, initialState }: { children: React.ReactN
   }, [state]);
 
   React.useEffect(() => {
-    const nextMode = resolveMode(pathname);
+    const storedMode = typeof window === "undefined" ? null : window.localStorage.getItem(APP_MODE_STORAGE_KEY);
+    const nextMode = resolveAppMode(pathname, storedMode);
 
     setMode((currentMode) => {
       if (currentMode === nextMode) {
@@ -192,20 +197,4 @@ function getErrorMessage(error: unknown) {
   }
 
   return "Не удалось выполнить операцию с хранилищем данных.";
-}
-
-function resolveMode(pathname: string | null): AppMode {
-  if (pathname === "/work") {
-    return "work";
-  }
-
-  if (pathname === "/" || pathname === "") {
-    return "work";
-  }
-
-  if (pathname?.startsWith("/demo")) {
-    return "demo";
-  }
-
-  return "work";
 }
