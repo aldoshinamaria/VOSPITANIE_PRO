@@ -1,5 +1,7 @@
 import { createLocalStorageDataAccess } from "@/lib/data-access/local-storage-repositories";
 import { createNamespacedAppRepository } from "@/lib/data-access/app-repository";
+import { resolveWorkDataBackend } from "@/lib/data-access/backend-config";
+import { createSupabaseDataAccess } from "@/lib/data-access/supabase-repositories";
 import { DEMO_STATE_STORAGE_KEY, WORK_STATE_STORAGE_KEY } from "@/lib/data-access/storage-keys";
 import { createDemoSchoolFactory } from "@/lib/domain/demo-school-factory";
 import { createEmptySchoolState } from "@/lib/domain/empty-school-state";
@@ -11,6 +13,10 @@ export function createModeAwareDataAccess(mode: AppMode, fallbackState?: AppStat
   const storageKey = mode === "demo" ? DEMO_STATE_STORAGE_KEY : WORK_STATE_STORAGE_KEY;
   const fallback = fallbackState ?? createEmptySchoolState();
   const modeFallback = mode === "demo" ? createDemoSchoolFactory().createDemoSchool("urban") : fallback;
+
+  if (mode === "work" && resolveWorkDataBackend() === "supabase") {
+    return createSupabaseDataAccess();
+  }
 
   return createLocalStorageDataAccess(createNamespacedAppRepository(storageKey, modeFallback));
 }

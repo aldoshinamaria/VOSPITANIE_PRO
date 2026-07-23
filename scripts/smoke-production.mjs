@@ -5,6 +5,7 @@ const baseUrl = `http://127.0.0.1:${port}`;
 const routes = [
   "/",
   "/launch-readiness",
+  "/login",
   "/school-passport",
   "/educational-system",
   "/events",

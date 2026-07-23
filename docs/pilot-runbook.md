@@ -13,6 +13,7 @@
 3. Проверить Security Advisor и устранить предупреждения о таблицах без RLS или избыточных правах.
 4. Получить Project URL и активный Publishable Key.
 5. Добавить в Vercel Production:
+   - `NEXT_PUBLIC_DATA_BACKEND=supabase`;
    - `NEXT_PUBLIC_SUPABASE_URL`;
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 6. Не добавлять `service_role` в переменные с префиксом `NEXT_PUBLIC_`.

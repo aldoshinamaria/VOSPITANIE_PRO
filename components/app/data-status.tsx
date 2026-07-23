@@ -4,10 +4,16 @@ import { AlertCircle, CheckCircle2, Loader2, X } from "lucide-react";
 
 import { useAppState } from "@/components/app/app-provider";
 import { Button } from "@/components/ui/button";
+import { isSupabaseBackendEnabled } from "@/lib/data-access/backend-config";
 import { cn } from "@/lib/utils";
 
 export function DataStatus() {
-  const { isLoading, isSaving, error, clearError } = useAppState();
+  const { mode, isLoading, isSaving, error, clearError } = useAppState();
+  const usesServer = mode === "work" && isSupabaseBackendEnabled();
+  const storageTitle = usesServer ? "серверного контура" : "браузера";
+  const storageDescription = usesServer
+    ? "Данные синхронизируются с защищённым серверным контуром школы."
+    : "Данные сохраняются в хранилище этого браузера.";
 
   if (!isLoading && !isSaving && !error) {
     return null;
@@ -31,10 +37,10 @@ export function DataStatus() {
         )}
         <div>
           <div className="font-medium">
-            {error ? "Ошибка сохранения" : isLoading ? "Загрузка данных из браузера" : "Сохранение в браузере"}
+            {error ? "Ошибка данных" : isLoading ? `Загрузка данных из ${storageTitle}` : `Сохранение в ${storageTitle}`}
           </div>
           <div className={cn("mt-1", error ? "text-red-800" : "text-slate-500")}>
-            {error ?? "Данные сохраняются в хранилище этого браузера. Можно продолжать работу после завершения операции."}
+            {error ?? `${storageDescription} Можно продолжать работу после завершения операции.`}
           </div>
         </div>
       </div>

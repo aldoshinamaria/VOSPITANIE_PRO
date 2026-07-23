@@ -325,8 +325,9 @@ export function createSupabaseBrowserClient(): SupabaseBrowserClient {
 
   return createClient(supabaseUrl, supabasePublishableKey, {
     auth: {
-      persistSession: false,
-      autoRefreshToken: false
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
     }
   });
 }

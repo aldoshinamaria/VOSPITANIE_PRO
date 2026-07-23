@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { AuthStatus } from "@/components/app/auth-status";
 import { DataStatus } from "@/components/app/data-status";
 import { ModeIndicator } from "@/components/app/mode-indicator";
 import { Sidebar } from "@/components/app/sidebar";
@@ -11,6 +12,7 @@ export function PageShell({ children }: { children: ReactNode }) {
         <Sidebar />
         <main className="min-w-0 flex-1 px-4 pb-6 pt-20 sm:px-6 lg:px-8 lg:py-6">
           <ModeIndicator />
+          <AuthStatus />
           <DataStatus />
           {children}
         </main>
